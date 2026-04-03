@@ -1,8 +1,8 @@
 <div align="center">
-  <img width="1200" alt="URL to Mascot banner" src="./BANNER.png" />
+  <img width="1200" alt="URL-HERO banner" src="https://raw.githubusercontent.com/pingqLIN/url-hero/main/BANNER.png" />
 </div>
 
-# URL to Mascot
+# URL-HERO
 
 <p align="center">
   <img alt="React 19" src="https://img.shields.io/badge/React-19-20232A?logo=react&logoColor=61DAFB" />
@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  Guess what your website mascot would be, then turn that guess into a 3D concept, a polished prompt, and a fast preview image.
+Guess what your website mascot would be, then move through a clean four-step flow to turn that guess into a 3D concept, a polished prompt, and a fast preview image.
 </p>
 
 <p align="center">
@@ -30,12 +30,12 @@
 
 ## Overview
 
-URL to Mascot is an AI visual concept generator built around one playful question:
+URL-HERO is an AI visual concept generator built around one playful question:
 what would this website look like as a mascot?
 It reads the meaning behind a domain, guesses the character hiding inside it, and turns that idea into a 3D concept plus an English prompt ready for image generation.
 
 - Convert a plain URL into a character brief with personality, materials, accessories, scene, and lighting.
-- Generate a six-part output flow that is easy to edit, review, and reuse.
+- Generate a four-step editing flow that is easy to follow, review, and reuse.
 - Produce preview images with Gemini image models or OpenAI image generation.
 
 View the AI Studio app: https://ai.studio/apps/c2ff7197-fe31-4aa0-bdf0-e75fb3bcf085
@@ -98,11 +98,9 @@ Open `http://localhost:3000` after the dev server starts.
 ## Workflow
 
 1. Enter a target domain such as `spotify.com` or `tw.yahoo.com`.
-2. Choose the text analysis provider and model.
-3. Generate the mascot concept.
-4. Review or edit the generated sections.
-5. Regenerate the final English prompt if needed.
-6. Generate a preview image from the prompt.
+2. Generate the mascot concept and review the analysis cards.
+3. Refine the final English prompt if needed.
+4. Generate a preview image from the prompt and tune the image controls.
 
 ## Model Support
 
