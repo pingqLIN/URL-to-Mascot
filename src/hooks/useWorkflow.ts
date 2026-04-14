@@ -8,7 +8,7 @@ export function useWorkflow(t: TFunction) {
   const steps = useMemo(
     () => [
       { id: 'entry' as const, title: t('workflowStepBrief'), desc: t('workflowStepBriefDesc') },
-      { id: 'brief' as const, title: t('workflowStepBrief'), desc: t('workflowStepBriefDesc') },
+      { id: 'brief' as const, title: t('workflowStepSetup'), desc: t('workflowStepSetupDesc') },
       { id: 'analysis' as const, title: t('workflowStepAnalysis'), desc: t('workflowStepAnalysisDesc') },
       { id: 'prompt' as const, title: t('workflowStepPrompt'), desc: t('workflowStepPromptDesc') },
       { id: 'preview' as const, title: t('workflowStepPreview'), desc: t('workflowStepPreviewDesc') },

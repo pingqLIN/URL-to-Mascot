@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { messages } from '../i18n/messages';
@@ -34,12 +34,12 @@ afterEach(() => {
 
 function ConceptHarness({
   initialResult = baseResult,
-  initialGeneratedImage = '',
   copySpy = vi.fn(),
+  regeneratePromptSpy = vi.fn().mockResolvedValue(undefined),
 }: {
   initialResult?: ConceptResult | null;
-  initialGeneratedImage?: string;
   copySpy?: ReturnType<typeof vi.fn>;
+  regeneratePromptSpy?: ReturnType<typeof vi.fn>;
 }) {
   const [result, setResult] = useState<ConceptResult | null>(initialResult);
 
@@ -55,17 +55,15 @@ function ConceptHarness({
       loading={false}
       result={result}
       url="spotify.com"
+      effectivePromptText={result?.section6.content ?? ''}
       promptText={result?.section6.content ?? ''}
       copied={false}
       regeneratingPrompt={false}
-      generatingImage={false}
-      generatedImage={initialGeneratedImage}
-      imageModel="gemini-2.5-flash-image"
       panelVisibility={panelVisibility}
       onContentChange={handleContentChange}
       onManualPromptChange={vi.fn()}
       onCopy={copySpy}
-      onRegeneratePrompt={vi.fn()}
+      onRegeneratePrompt={regeneratePromptSpy}
       renderWorkflowStepper={() => <div>Stepper</div>}
       t={t}
     />
@@ -99,10 +97,13 @@ describe('ConceptSection', () => {
     const copySpy = vi.fn();
     render(<ConceptHarness copySpy={copySpy} />);
 
+    fireEvent.click(screen.getByRole('button', { name: /AI Visual Prompt/i }));
+    expect(screen.getByText('Initial prompt body')).toBeInTheDocument();
+
     fireEvent.click(
-      screen.getAllByRole('button', {
+      screen.getByRole('button', {
         name: t('editSection', { section: t('aiVisualPrompt') }),
-      })[0],
+      }),
     );
 
     fireEvent.change(screen.getByLabelText(t('aiVisualPrompt')), {
@@ -118,13 +119,37 @@ describe('ConceptSection', () => {
     fireEvent.click(screen.getAllByRole('button', { name: t('copyPrompt') })[0]);
 
     expect(copySpy).toHaveBeenCalledWith('Updated prompt body');
-    expect(screen.getByText(t('optimizedFor3D'))).toBeInTheDocument();
+    expect(screen.queryByText(t('optimizedFor3D'))).not.toBeInTheDocument();
   });
 
-  it('renders the generated preview image inside the content stage when available', () => {
-    render(<ConceptHarness initialGeneratedImage="data:image/png;base64,abc" />);
+  it('shows concept cards in the first tab and keeps the preview block out of this section', () => {
+    render(<ConceptHarness />);
 
-    expect(screen.getByAltText(t('mascotPreviewAlt'))).toBeInTheDocument();
-    expect(screen.getByText(t('previewReady'))).toBeInTheDocument();
+    expect(screen.getByText('Initial concept summary')).toBeInTheDocument();
+    expect(screen.queryByText(t('optimizedFor3D'))).not.toBeInTheDocument();
+  });
+
+  it('shows a save-and-regenerate action after tab 1 content changes and switches to the prompt tab', async () => {
+    const regeneratePromptSpy = vi.fn().mockResolvedValue(undefined);
+    render(<ConceptHarness regeneratePromptSpy={regeneratePromptSpy} />);
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: t('editSection', { section: t('coreConcept') }),
+      }),
+    );
+
+    fireEvent.change(screen.getByLabelText(t('coreConcept')), {
+      target: { value: 'Updated concept summary' },
+    });
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: t('saveAndRegeneratePrompt'),
+      }),
+    );
+
+    await waitFor(() => expect(regeneratePromptSpy).toHaveBeenCalledTimes(1));
+    expect(screen.getByText('Initial prompt body')).toBeInTheDocument();
   });
 });

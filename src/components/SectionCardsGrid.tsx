@@ -1,4 +1,5 @@
 import type React from 'react';
+import { GLASS_SUB_PANEL_CLS } from '../constants';
 import type { ConceptResult } from '../types';
 
 function SectionCardsGrid({
@@ -28,7 +29,7 @@ function SectionCardsGrid({
         return (
           <div
             key={section.key}
-            className={`rounded-[1.35rem] border border-white/10 bg-slate-950/38 p-4 shadow-[0_16px_34px_rgba(15,23,42,0.2)] backdrop-blur-md ${section.wrapClass} ${section.colSpan}`}
+            className={`${GLASS_SUB_PANEL_CLS} p-4 ${section.wrapClass} ${section.colSpan}`}
           >
             <div className="mb-2.5 flex items-center gap-2.5">
               <Icon className={`h-4 w-4 ${section.iconClass}`} />

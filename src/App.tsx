@@ -1,4 +1,6 @@
+import { Check, Pencil, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
+import { useEffect, useRef, useState } from 'react';
 import AppBackdrop from './components/AppBackdrop';
 import AppFooter from './components/AppFooter';
 import AppHeader from './components/AppHeader';
@@ -10,6 +12,7 @@ import UrlInputBar from './components/UrlInputBar';
 import WorkflowStepper from './components/WorkflowStepper';
 import BriefSection from './sections/BriefSection';
 import ConceptSection from './sections/ConceptSection';
+import FinalPreviewStage from './sections/FinalPreviewStage';
 import HeroSection from './sections/HeroSection';
 import PreviewSection from './sections/PreviewSection';
 import WorkspaceStage from './sections/WorkspaceStage';
@@ -31,7 +34,6 @@ import tb02 from '../HERO/TB_02.jpg';
 import tb03 from '../HERO/TB_03.jpg';
 import tb04 from '../HERO/TB_04.jpg';
 import tb05 from '../HERO/TB_05.jpg';
-import bgResultFlash from '../HERO/BG/M_BBX.jpg';
 
 const builtInGeminiKey =
   (process.env as Record<string, string | undefined>).API_KEY ||
@@ -39,6 +41,13 @@ const builtInGeminiKey =
   '';
 
 const hasBuiltInGeminiKey = Boolean(builtInGeminiKey);
+const APP_BG_SEQUENCE = [tb00, tb01, tb02, tb03, tb04, tb05];
+const DEMO_IMAGES = {
+  animal: heroActive,
+  human: heroWorkspace,
+  object: heroIdle,
+  auto: heroWorkspace,
+} as const;
 
 export default function App() {
   const { locale, setLocale, t } = useI18n();
@@ -50,7 +59,6 @@ export default function App() {
     stage: workflowStage,
     setStage: setWorkflowStage,
     stageIndex: workflowStageIndex,
-    currentStep,
     steps: workflowSteps,
     jumpToStage,
   } = useWorkflow(t);
@@ -63,7 +71,9 @@ export default function App() {
     aspectRatio,
     copied,
     entryMorphProgress,
+    effectivePromptText,
     error,
+    statusMessage,
     generatedImage,
     generatingImage,
     handleContentChange,
@@ -89,16 +99,11 @@ export default function App() {
     url,
     urlValidationError,
   } = useMascotWorkflow({
-    bgResultFlash,
+    bgResultFlash: null,
     builtInGeminiKey,
     clearBgTimers,
     demoMode,
-    demoImages: {
-      animal: heroActive,
-      human: heroWorkspace,
-      object: heroIdle,
-      auto: heroWorkspace,
-    },
+    demoImages: DEMO_IMAGES,
     flashBackground,
     imageConfig,
     locale,
@@ -106,226 +111,392 @@ export default function App() {
     t,
     textConfig,
   });
+  const [entryTransitionActive, setEntryTransitionActive] = useState(false);
+  const [isWorkspaceUrlEditing, setIsWorkspaceUrlEditing] = useState(false);
+  const [uiVisible, setUiVisible] = useState(true);
+  const [workspaceUrlDraft, setWorkspaceUrlDraft] = useState('');
+  const transitionTimerRef = useRef<number[]>([]);
 
   const contentStageActive = workflowStage !== 'entry';
-  const previewStageActive = workflowStage === 'preview';
   const briefStageActive = workflowStage === 'brief';
   const entryInlineError = error === t('errorNoUrl') || error === t('errorInvalidUrlFormat') ? error : '';
-  const workspaceStageCopy =
-    workflowStage === 'brief'
-      ? t('workflowStepBriefDesc')
-      : workflowStage === 'analysis'
-      ? t('workflowStepAnalysisDesc')
-      : workflowStage === 'prompt'
-        ? t('workflowStepPromptDesc')
-        : workflowStage === 'preview'
-          ? t('workflowStepPreviewDesc')
-          : t('workflowStepBriefDesc');
+  useEffect(() => {
+    return () => {
+      for (const timerId of transitionTimerRef.current) {
+        window.clearTimeout(timerId);
+      }
+      transitionTimerRef.current = [];
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isWorkspaceUrlEditing) {
+      setWorkspaceUrlDraft(url);
+    }
+  }, [isWorkspaceUrlEditing, url]);
+
+  useEffect(() => {
+    if (workflowStage === 'preview') {
+      setShowSettings(false);
+    }
+  }, [setShowSettings, workflowStage]);
+
+  const handleEnterBriefStageWithTransition = () => {
+    if (!handleEnterBriefStage()) {
+      return;
+    }
+
+    for (const timerId of transitionTimerRef.current) {
+      window.clearTimeout(timerId);
+    }
+    transitionTimerRef.current = [];
+    setEntryTransitionActive(true);
+    setUiVisible(false);
+
+    const finishTransitionTimer = window.setTimeout(() => {
+      setEntryTransitionActive(false);
+      setUiVisible(true);
+    }, 2000);
+
+    transitionTimerRef.current = [finishTransitionTimer];
+  };
+
+  const handleSaveWorkspaceUrl = () => {
+    setUrl(workspaceUrlDraft.replace(/^https?:\/\//, '').trim());
+    setIsWorkspaceUrlEditing(false);
+  };
+
+  const handleJumpToStage = (nextStage: typeof workflowStage) => {
+    if (nextStage === 'preview' && !generatedImage && !generatingImage) {
+      return;
+    }
+
+    jumpToStage(nextStage);
+  };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-slate-950 text-white selection:bg-amber-500/30">
+    <div className="app-viewport relative overflow-hidden bg-slate-950 text-white selection:bg-amber-500/30">
       <style>{`[data-temp-top="true"] { position: relative !important; z-index: 9999 !important; }`}</style>
       <svg aria-hidden="true" className="absolute h-0 w-0">
         <defs>
-          <filter id="hero-glass-distort" x="-20%" y="-20%" width="140%" height="140%">
-            <feTurbulence type="fractalNoise" baseFrequency="0.012 0.035" numOctaves="2" seed="7" result="noise" />
-            <feDisplacementMap in="SourceGraphic" in2="noise" scale="9" xChannelSelector="R" yChannelSelector="G" />
-            <feGaussianBlur stdDeviation="0.4" />
+          <filter id="liquid-glass-surface" x="-18%" y="-18%" width="136%" height="136%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.011 0.035" numOctaves="2" seed="11" result="noise" />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="8" xChannelSelector="R" yChannelSelector="G" />
+            <feGaussianBlur stdDeviation="0.25" />
+          </filter>
+          <filter id="hero-liquid-distort" x="-20%" y="-20%" width="140%" height="140%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.01 0.032" numOctaves="2" seed="7" result="noise" />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="11" xChannelSelector="R" yChannelSelector="G" />
+            <feGaussianBlur stdDeviation="0.35" />
           </filter>
         </defs>
       </svg>
 
-      <AppBackdrop bgDepthMap={bgDepthMap} bgOverride={bgOverride} bgSequence={[tb00, tb01, tb02, tb03, tb04, tb05]} />
-      <FloatingSettingsButton onClick={() => setShowSettings(true)} t={t} />
+      <AppBackdrop
+        bgDepthMap={bgDepthMap}
+        bgOverride={bgOverride}
+        bgSequence={APP_BG_SEQUENCE}
+        previewMode={workflowStage === 'preview'}
+      />
+      <motion.div
+        animate={{ opacity: uiVisible ? 1 : 0 }}
+        transition={{ duration: 0.6, ease: STANDARD_EASE }}
+        className={uiVisible ? '' : 'pointer-events-none'}
+      >
+        {workflowStage !== 'preview' ? <FloatingSettingsButton onClick={() => setShowSettings(true)} t={t} /> : null}
 
-      <AnimatePresence>
-        <SettingsPanel
-          showSettings={showSettings}
-          setShowSettings={setShowSettings}
-          demoMode={demoMode}
-          groups={groups}
-          t={t}
-        />
-      </AnimatePresence>
+        <AnimatePresence>
+          <SettingsPanel
+            showSettings={showSettings}
+            setShowSettings={setShowSettings}
+            demoMode={demoMode}
+            groups={groups}
+            t={t}
+          />
+        </AnimatePresence>
 
-      <main className="relative z-10 h-screen overflow-y-auto scrollbar-visible">
-        <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
-          <AppHeader locale={locale} onToggleLocale={() => setLocale(locale === 'en' ? 'zh-TW' : 'en')} t={t} />
+        <main className="app-viewport relative z-10 overflow-hidden">
+          <div className="mx-auto flex h-full max-w-7xl flex-col px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
+            <AppHeader
+              locale={locale}
+              onToggleLocale={() => setLocale(locale === 'en' ? 'zh-TW' : 'en')}
+              t={t}
+              workflowStepper={
+                workflowStage === 'entry' ? null : (
+                  <WorkflowStepper
+                    leadItem={
+                      <div className="rounded-[1.35rem] border border-white/28 bg-white/[0.08] p-3 text-left shadow-[0_12px_32px_rgba(15,23,42,0.2)]">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-white/36">01</div>
+                            {isWorkspaceUrlEditing ? (
+                              <div className="mt-1 flex items-center gap-2">
+                                <input
+                                  value={workspaceUrlDraft}
+                                  onChange={(event) => setWorkspaceUrlDraft(event.target.value)}
+                                  onKeyDown={(event) => {
+                                    if (event.key === 'Enter') {
+                                      handleSaveWorkspaceUrl();
+                                    }
+                                    if (event.key === 'Escape') {
+                                      setWorkspaceUrlDraft(url);
+                                      setIsWorkspaceUrlEditing(false);
+                                    }
+                                  }}
+                                  className="min-w-0 flex-1 border-0 bg-transparent text-sm font-semibold text-white outline-none"
+                                  aria-label={t('targetWebsite')}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={handleSaveWorkspaceUrl}
+                                  className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/12 bg-white/[0.06] text-white/78 transition-colors hover:bg-white/[0.1] hover:text-white"
+                                >
+                                  <Check className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setWorkspaceUrlDraft(url);
+                                    setIsWorkspaceUrlEditing(false);
+                                  }}
+                                  className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/12 bg-white/[0.04] text-white/48 transition-colors hover:bg-white/[0.08] hover:text-white/76"
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="mt-1 flex items-center justify-between gap-3">
+                                <div className="truncate text-sm font-semibold text-white">{url}</div>
+                                <button
+                                  type="button"
+                                  onClick={() => setIsWorkspaceUrlEditing(true)}
+                                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/12 bg-white/[0.04] text-white/48 transition-colors hover:bg-white/[0.08] hover:text-white/78"
+                                  aria-label={t('targetWebsite')}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                          <div className="mt-0.5 h-2.5 w-2.5 rounded-full bg-emerald-300/80" />
+                        </div>
+                      </div>
+                    }
+                    steps={workflowSteps.slice(1)}
+                    currentStage={workflowStage}
+                    stageIndex={workflowStageIndex}
+                    hasResult={Boolean(result)}
+                    indexOffset={1}
+                    columns={5}
+                    onJumpToStage={handleJumpToStage}
+                  />
+                )
+              }
+            />
 
-          <AnimatePresence mode="wait">
-            {workflowStage === 'entry' ? (
-              <motion.div
-                key="entry"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.5, ease: STANDARD_EASE }}
-              >
-                <HeroSection
-                  url={url}
-                  entryMorphProgress={entryMorphProgress}
-                  heroIdle={heroIdle}
-                  heroActive={heroActive}
-                  renderUrlInputBar={() => (
-                    <UrlInputBar
-                      variant="hero"
-                      url={url}
-                      setUrl={setUrl}
-                      loading={loading}
-                      error={error}
-                      inlineError={entryInlineError}
-                      urlValidationError={urlValidationError}
-                      onSubmit={handleEnterBriefStage}
-                      onClearError={() => setError('')}
-                      t={t}
-                    />
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1 overflow-hidden">
+                <AnimatePresence mode="wait">
+                  {workflowStage === 'entry' ? (
+                    <motion.div
+                      key="entry"
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.5, ease: STANDARD_EASE }}
+                      className="h-full"
+                    >
+                      <HeroSection
+                        url={url}
+                        entryMorphProgress={entryMorphProgress}
+                        heroIdle={heroIdle}
+                        heroActive={heroActive}
+                        renderUrlInputBar={() => (
+                          <UrlInputBar
+                            variant="hero"
+                            url={url}
+                            setUrl={setUrl}
+                            loading={loading}
+                            error={error}
+                            inlineError={entryInlineError}
+                            urlValidationError={urlValidationError}
+                            onSubmit={handleEnterBriefStageWithTransition}
+                            onClearError={() => setError('')}
+                            t={t}
+                          />
+                        )}
+                        t={t}
+                      />
+                    </motion.div>
+                  ) : workflowStage === 'preview' ? (
+                    <motion.div
+                      key="preview"
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.5, ease: STANDARD_EASE }}
+                      className="h-full"
+                    >
+                      <FinalPreviewStage generatedImage={generatedImage} generatingImage={generatingImage} t={t} />
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="workspace"
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.5, ease: STANDARD_EASE }}
+                      className="h-full"
+                    >
+                      <WorkspaceStage
+                      briefSection={
+                        workflowStage === 'brief' ? (
+                          <BriefSection
+                            briefStageActive={briefStageActive}
+                            workflowStageIndex={workflowStageIndex}
+                            url={url}
+                            provider={textConfig.provider}
+                            setProvider={textConfig.setProvider}
+                            model={textConfig.model}
+                            setModel={textConfig.setModel}
+                            mascotType={mascotType}
+                            setMascotType={setMascotType}
+                            loading={loading}
+                            demoMode={demoMode}
+                            panelVisibility={panelVisibility}
+                            renderKeyConfig={() => (
+                              <KeyConfigPanel
+                                isText
+                                authMethod={textConfig.authMethod}
+                                setAuthMethod={textConfig.setAuthMethod}
+                                provider={textConfig.provider}
+                                keySource={textConfig.keySource}
+                                setKeySource={textConfig.setKeySource}
+                                keyValue={textConfig.apiKey}
+                                setKeyValue={textConfig.setApiKey}
+                                hasBuiltInGeminiKey={hasBuiltInGeminiKey}
+                                hasPaidKey={hasPaidKey}
+                                onSelectKey={handleSelectKey}
+                                t={t}
+                              />
+                            )}
+                            onGenerate={handleGenerateConcept}
+                            t={t}
+                          />
+                        ) : null
+                      }
+                      conceptSection={
+                        workflowStage === 'brief' ? null : (
+                          <ConceptSection
+                            contentStageActive={contentStageActive}
+                            loading={loading}
+                            result={result}
+                            url={url}
+                            effectivePromptText={effectivePromptText}
+                            promptText={promptText}
+                            copied={copied}
+                            regeneratingPrompt={regeneratingPrompt}
+                            panelVisibility={panelVisibility}
+                            onContentChange={handleContentChange}
+                            onManualPromptChange={setManualPrompt}
+                            onCopy={handleCopy}
+                            onRegeneratePrompt={handleRegeneratePrompt}
+                            renderWorkflowStepper={() => (
+                              <WorkflowStepper
+                              steps={workflowSteps}
+                              currentStage={workflowStage}
+                              stageIndex={workflowStageIndex}
+                              hasResult={Boolean(result)}
+                              onJumpToStage={handleJumpToStage}
+                            />
+                          )}
+                          t={t}
+                          />
+                        )
+                      }
+                      previewSection={
+                        workflowStage === 'brief' ? null : (
+                          <PreviewSection
+                            previewStageActive={workflowStage === 'prompt'}
+                            imageProvider={imageConfig.provider}
+                            setImageProvider={imageConfig.setProvider}
+                            imageModel={imageConfig.model}
+                            setImageModel={imageConfig.setModel}
+                            aspectRatio={aspectRatio}
+                            setAspectRatio={setAspectRatio}
+                            includeText={includeText}
+                            setIncludeText={setIncludeText}
+                            imageText={imageText}
+                            setImageText={setImageText}
+                            generatingImage={generatingImage}
+                            promptText={effectivePromptText}
+                            demoMode={demoMode}
+                            panelVisibility={panelVisibility}
+                            renderKeyConfig={() => (
+                              <KeyConfigPanel
+                                isText={false}
+                                authMethod={imageConfig.authMethod}
+                                setAuthMethod={imageConfig.setAuthMethod}
+                                provider={imageConfig.provider}
+                                keySource={imageConfig.keySource}
+                                setKeySource={imageConfig.setKeySource}
+                                keyValue={imageConfig.apiKey}
+                                setKeyValue={imageConfig.setApiKey}
+                                hasBuiltInGeminiKey={hasBuiltInGeminiKey}
+                                hasPaidKey={hasPaidKey}
+                                onSelectKey={handleSelectKey}
+                                t={t}
+                              />
+                            )}
+                            onGenerate={handleGeneratePreviewImage}
+                            t={t}
+                          />
+                        )
+                      }
+                      />
+                    </motion.div>
                   )}
-                  t={t}
+                </AnimatePresence>
+              </div>
+              <ErrorBanner
+                message={statusMessage}
+                tone="info"
+                visible={Boolean(statusMessage) && workflowStage !== 'entry' && workflowStage !== 'preview'}
+              />
+              <ErrorBanner message={error} visible={Boolean(error) && workflowStage !== 'entry' && workflowStage !== 'preview'} />
+              {workflowStage !== 'preview' ? <AppFooter locale={locale} t={t} /> : null}
+            </div>
+          </div>
+        </main>
+      </motion.div>
+      <AnimatePresence>
+        {entryTransitionActive ? (
+          <motion.div
+            key="entry-waiting"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25, ease: STANDARD_EASE }}
+            className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center"
+          >
+            <div className="flex items-center gap-3 rounded-full border border-white/10 bg-slate-950/16 px-5 py-3 backdrop-blur-sm">
+              {[0, 1, 2].map((index) => (
+                <motion.span
+                  key={index}
+                  className="h-2.5 w-2.5 rounded-full bg-white/70"
+                  animate={{ opacity: [0.2, 1, 0.2], scale: [0.92, 1.08, 0.92] }}
+                  transition={{
+                    duration: 0.9,
+                    ease: 'easeInOut',
+                    repeat: Number.POSITIVE_INFINITY,
+                    delay: index * 0.18,
+                  }}
                 />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="workspace"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.5, ease: STANDARD_EASE }}
-              >
-                <WorkspaceStage
-                  currentStepTitle={currentStep.title}
-                  heroSubtitle={t('heroSubtitle')}
-                  stageCopy={workspaceStageCopy}
-                  workflowStepper={
-                    <WorkflowStepper
-                      steps={workflowSteps}
-                      currentStage={workflowStage}
-                      stageIndex={workflowStageIndex}
-                      hasResult={Boolean(result)}
-                      onJumpToStage={jumpToStage}
-                    />
-                  }
-                  briefSection={
-                    <BriefSection
-                      briefStageActive={briefStageActive}
-                      workflowStageIndex={workflowStageIndex}
-                      url={url}
-                      provider={textConfig.provider}
-                      setProvider={textConfig.setProvider}
-                      model={textConfig.model}
-                      setModel={textConfig.setModel}
-                      mascotType={mascotType}
-                      setMascotType={setMascotType}
-                      loading={loading}
-                      demoMode={demoMode}
-                      panelVisibility={panelVisibility}
-                      renderUrlInputBar={() => (
-                        <UrlInputBar
-                          variant="panel"
-                          url={url}
-                          setUrl={setUrl}
-                          loading={loading}
-                          error={error}
-                          urlValidationError={urlValidationError}
-                          onSubmit={handleGenerateConcept}
-                          onClearError={() => setError('')}
-                          t={t}
-                        />
-                      )}
-                      renderKeyConfig={() => (
-                        <KeyConfigPanel
-                          isText
-                          authMethod={textConfig.authMethod}
-                          setAuthMethod={textConfig.setAuthMethod}
-                          provider={textConfig.provider}
-                          keySource={textConfig.keySource}
-                          setKeySource={textConfig.setKeySource}
-                          keyValue={textConfig.apiKey}
-                          setKeyValue={textConfig.setApiKey}
-                          hasBuiltInGeminiKey={hasBuiltInGeminiKey}
-                          hasPaidKey={hasPaidKey}
-                          onSelectKey={handleSelectKey}
-                          t={t}
-                        />
-                      )}
-                      onGenerate={handleGenerateConcept}
-                      t={t}
-                    />
-                  }
-                  conceptSection={
-                    <ConceptSection
-                      contentStageActive={contentStageActive}
-                      loading={loading}
-                      result={result}
-                      url={url}
-                      promptText={promptText}
-                      copied={copied}
-                      regeneratingPrompt={regeneratingPrompt}
-                      generatingImage={generatingImage}
-                      generatedImage={generatedImage}
-                      imageModel={imageConfig.model}
-                      panelVisibility={panelVisibility}
-                      onContentChange={handleContentChange}
-                      onManualPromptChange={setManualPrompt}
-                      onCopy={handleCopy}
-                      onRegeneratePrompt={handleRegeneratePrompt}
-                      renderWorkflowStepper={() => (
-                        <WorkflowStepper
-                          steps={workflowSteps}
-                          currentStage={workflowStage}
-                          stageIndex={workflowStageIndex}
-                          hasResult={Boolean(result)}
-                          onJumpToStage={jumpToStage}
-                        />
-                      )}
-                      t={t}
-                    />
-                  }
-                  previewSection={
-                    <PreviewSection
-                      previewStageActive={previewStageActive}
-                      imageProvider={imageConfig.provider}
-                      setImageProvider={imageConfig.setProvider}
-                      imageModel={imageConfig.model}
-                      setImageModel={imageConfig.setModel}
-                      aspectRatio={aspectRatio}
-                      setAspectRatio={setAspectRatio}
-                      includeText={includeText}
-                      setIncludeText={setIncludeText}
-                      imageText={imageText}
-                      setImageText={setImageText}
-                      generatingImage={generatingImage}
-                      generatedImage={generatedImage}
-                      promptText={promptText}
-                      demoMode={demoMode}
-                      panelVisibility={panelVisibility}
-                      renderKeyConfig={() => (
-                        <KeyConfigPanel
-                          isText={false}
-                          authMethod={imageConfig.authMethod}
-                          setAuthMethod={imageConfig.setAuthMethod}
-                          provider={imageConfig.provider}
-                          keySource={imageConfig.keySource}
-                          setKeySource={imageConfig.setKeySource}
-                          keyValue={imageConfig.apiKey}
-                          setKeyValue={imageConfig.setApiKey}
-                          hasBuiltInGeminiKey={hasBuiltInGeminiKey}
-                          hasPaidKey={hasPaidKey}
-                          onSelectKey={handleSelectKey}
-                          t={t}
-                        />
-                      )}
-                      onGenerate={handleGeneratePreviewImage}
-                      t={t}
-                    />
-                  }
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-          <ErrorBanner error={error} visible={Boolean(error) && workflowStage !== 'entry'} />
-          <AppFooter t={t} />
-        </div>
-      </main>
+              ))}
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

@@ -38,7 +38,6 @@ function renderPreviewSection(overrides: Partial<ComponentProps<typeof PreviewSe
       imageText=""
       setImageText={vi.fn()}
       generatingImage={false}
-      generatedImage=""
       promptText=""
       demoMode={false}
       panelVisibility={basePanelVisibility}
@@ -55,16 +54,31 @@ describe('PreviewSection', () => {
     renderPreviewSection();
 
     expect(screen.getAllByText(t('previewPending')).length).toBeGreaterThan(0);
+    expect(
+      screen.getByRole('heading', {
+        name: t('workflowStepPrompt'),
+      }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t('generatePreviewImage') })).toBeDisabled();
   });
 
-  it('switches to the ready state once a preview already exists', () => {
+  it('enables generation once a prompt is available', () => {
     renderPreviewSection({
       promptText: 'Prompt is ready',
-      generatedImage: 'data:image/png;base64,abc',
     });
 
     expect(screen.getByRole('button', { name: t('generatePreviewImage') })).toBeEnabled();
-    expect(screen.getAllByText(t('previewReady')).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(t('previewPending')).length).toBeGreaterThan(0);
+  });
+
+  it('explains when OpenAI will fall back to square output for unsupported ratios', () => {
+    renderPreviewSection({
+      imageProvider: 'openai',
+      imageModel: 'dall-e-3',
+      aspectRatio: '4:3',
+      promptText: 'Prompt is ready',
+    });
+
+    expect(screen.getByText(t('openAiAspectRatioHint'))).toBeInTheDocument();
   });
 });

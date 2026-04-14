@@ -13,46 +13,21 @@ type HeroSectionProps = {
   t: TranslateFn;
 };
 
-function HeroSection({
-  entryMorphProgress,
-  heroIdle,
-  heroActive,
-  renderUrlInputBar,
-  t,
-}: HeroSectionProps) {
+function HeroSection({ entryMorphProgress, heroIdle, heroActive, renderUrlInputBar, t }: HeroSectionProps) {
   return (
-    <section className="relative flex min-h-[calc(100vh-160px)] w-full items-center justify-center py-2">
-      <div className="relative h-[clamp(360px,60vh,620px)] w-full max-w-[720px]">
-        <motion.div
-          initial={{ opacity: 0, y: -24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: STANDARD_EASE }}
-          className="pointer-events-none absolute inset-x-0 top-[clamp(72px,10vh,112px)] z-10 px-6 text-center select-none [@media(max-height:600px)]:hidden"
-        >
-          <div className="mx-auto w-full max-w-5xl">
-            <h1 className="text-[clamp(4.4rem,18vw,11.5rem)] font-black uppercase leading-none tracking-[-0.06em]">
-              <span className="relative inline-block">
-                <motion.span
-                  className="hero-title-glass-primary absolute inset-0 text-transparent"
-                  animate={{ opacity: [0.72, 0.95, 0.72] }}
-                  transition={{ duration: 4.8, repeat: Infinity, ease: 'easeInOut' }}
-                >
-                  URL HERO
-                </motion.span>
-                <span className="hero-title-glass-secondary absolute inset-0 text-transparent">URL HERO</span>
-                <span className="hero-title-glass-base text-transparent">URL HERO</span>
-              </span>
-            </h1>
-          </div>
-        </motion.div>
+    <section className="app-hero-viewport relative flex w-full min-h-0 items-center justify-center py-1 sm:py-2">
+      <div className="relative h-full min-h-0 w-full max-w-[920px] max-h-[720px]">
+        <div className="hero-glass-orb hero-glass-orb--cyan absolute left-[8%] top-[14%] h-28 w-28 sm:h-36 sm:w-36" />
+        <div className="hero-glass-orb hero-glass-orb--amber absolute right-[12%] top-[10%] h-24 w-24 sm:h-32 sm:w-32" />
+        <div className="hero-glass-orb hero-glass-orb--violet absolute bottom-[28%] right-[16%] h-32 w-32 sm:h-44 sm:w-44" />
 
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, ease: STANDARD_EASE }}
-          className="absolute inset-x-0 bottom-[clamp(8px,4vh,40px)] flex justify-center"
+          className="absolute inset-x-0 bottom-[clamp(8px,4vh,40px)] z-20 flex justify-center"
         >
-          <div className="relative mb-[clamp(76px,16vh,162px)] sm:mb-[clamp(92px,18vh,184px)]">
+          <div className="relative mb-[clamp(52px,12vh,162px)] sm:mb-[clamp(68px,14vh,184px)]">
             <motion.div
               data-robot="true"
               aria-hidden="true"
@@ -66,7 +41,7 @@ function HeroSection({
                 draggable={false}
                 animate={{ opacity: 1 - entryMorphProgress }}
                 transition={{ duration: 0.25, ease: 'easeOut' }}
-                className="pointer-events-none select-none h-[clamp(220px,50vh,500px)] w-auto max-w-none object-contain object-bottom"
+                className="pointer-events-none select-none h-[clamp(200px,42vh,500px)] w-auto max-w-none object-contain object-bottom"
               />
               <motion.img
                 src={heroActive}
@@ -74,15 +49,15 @@ function HeroSection({
                 draggable={false}
                 animate={{ opacity: entryMorphProgress }}
                 transition={{ duration: 0.25, ease: 'easeOut' }}
-                className="pointer-events-none select-none absolute inset-0 h-[clamp(220px,50vh,500px)] w-auto max-w-none object-contain object-bottom"
+                className="pointer-events-none select-none absolute inset-0 h-[clamp(200px,42vh,500px)] w-auto max-w-none object-contain object-bottom"
               />
             </motion.div>
 
-            <div className="absolute left-1/2 top-[56%] z-20 w-[min(300px,calc(100vw-2rem))] -translate-x-1/2 sm:w-[380px]">
+            <div className="absolute left-1/2 top-[58%] z-20 w-[min(320px,calc(100vw-2rem))] -translate-x-1/2 sm:w-[400px]">
               {renderUrlInputBar()}
             </div>
 
-            <div className="absolute bottom-3 left-1/2 h-4 w-28 -translate-x-1/2 rounded-[100%] bg-amber-300/20 blur-xl" />
+            <div className="absolute bottom-3 left-1/2 h-4 w-28 -translate-x-1/2 rounded-[100%] bg-amber-300/16 blur-xl" />
           </div>
         </motion.div>
 

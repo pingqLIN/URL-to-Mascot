@@ -19,7 +19,6 @@ type BriefSectionProps = {
   loading: boolean;
   demoMode: boolean;
   panelVisibility: PanelVisibilityConfig;
-  renderUrlInputBar: () => ReactNode;
   renderKeyConfig: () => ReactNode;
   onGenerate: () => void;
   t: TranslateFn;
@@ -38,11 +37,12 @@ function BriefSection({
   loading,
   demoMode,
   panelVisibility,
-  renderUrlInputBar,
   renderKeyConfig,
   onGenerate,
   t,
 }: BriefSectionProps) {
+  const isSupportedTextProvider = (providerId: string) => providerId === 'google';
+
   return (
     <motion.section
       initial={false}
@@ -55,10 +55,10 @@ function BriefSection({
       <div className="mb-4 flex items-start justify-between gap-4 border-b border-white/8 pb-4">
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-300/75">
-            {t('workflowStepBrief')}
+            {t('workflowStepSetup')}
           </div>
-          <h2 className="mt-2 text-lg font-semibold text-white/92">{t('targetWebsite')}</h2>
-          <p className="mt-1 text-xs leading-relaxed text-white/42">{t('workflowStepBriefDesc')}</p>
+          <h2 className="mt-2 text-lg font-semibold text-white/92">{t('workflowStepSetup')}</h2>
+          <p className="mt-1 text-xs leading-relaxed text-white/42">{t('workflowStepSetupDesc')}</p>
         </div>
         <div className="rounded-xl border border-white/8 bg-white/[0.04] px-3 py-2 text-[10px] uppercase tracking-[0.22em] text-white/40">
           {String(workflowStageIndex + 1).padStart(2, '0')} / 04
@@ -66,8 +66,6 @@ function BriefSection({
       </div>
 
       <div className="space-y-4">
-        {renderUrlInputBar()}
-
         <div className="grid gap-3">
           <div className="space-y-2">
             <span className={LABEL_CLS}>{t('textAnalysis')}</span>
@@ -79,11 +77,12 @@ function BriefSection({
               className={SELECT_CLS}
             >
               {PROVIDERS.map((item) => (
-                <option key={item.id} value={item.id}>
+                <option key={item.id} value={item.id} disabled={!isSupportedTextProvider(item.id)}>
                   {item.name}
                 </option>
               ))}
             </select>
+            <div className="text-[10px] leading-relaxed text-white/45">{t('textProviderSupportHint')}</div>
           </div>
 
           <div className="space-y-2">

@@ -1,28 +1,40 @@
+import type { ReactNode } from 'react';
 import type { WorkflowStage } from '../types';
 
 type WorkflowStep = {
   id: WorkflowStage;
   title: string;
-  desc: string;
 };
 
 type WorkflowStepperProps = {
+  leadItem?: ReactNode;
   steps: WorkflowStep[];
   currentStage: WorkflowStage;
   stageIndex: number;
   hasResult: boolean;
+  indexOffset?: number;
+  columns?: number;
   onJumpToStage: (stage: WorkflowStage) => void;
 };
 
 function WorkflowStepper({
+  leadItem,
   steps,
   currentStage,
   stageIndex,
   hasResult,
+  indexOffset = 0,
+  columns = 5,
   onJumpToStage,
 }: WorkflowStepperProps) {
   return (
-    <div className="grid gap-2 sm:grid-cols-5">
+    <div
+      className="grid gap-2"
+      style={{
+        gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+      }}
+    >
+      {leadItem}
       {steps.map((step, index) => {
         const isActive = currentStage === step.id;
         const isComplete = stageIndex > index;
@@ -45,7 +57,7 @@ function WorkflowStepper({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-white/36">
-                  {String(index + 1).padStart(2, '0')}
+                  {String(index + indexOffset + 1).padStart(2, '0')}
                 </div>
                 <div className={`mt-1 text-sm font-semibold ${isActive ? 'text-white' : 'text-white/72'}`}>
                   {step.title}
@@ -61,7 +73,6 @@ function WorkflowStepper({
                 }`}
               />
             </div>
-            <p className="mt-2 text-[11px] leading-relaxed text-white/42">{step.desc}</p>
           </button>
         );
       })}

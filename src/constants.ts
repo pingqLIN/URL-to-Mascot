@@ -51,12 +51,12 @@ export const DEFAULT_PANEL_VISIBILITY: PanelVisibilityConfig = {
 
 // ─── Shared Tailwind class strings ──────────────────────────────────────────
 export const INPUT_CLS =
-  'w-full border-0 border-b border-white/12 bg-transparent px-0 py-2.5 text-sm text-white placeholder-white/25 transition-all duration-200 hover:border-white/22 focus:border-amber-500/55 focus:outline-none';
+  'w-full border-0 border-b border-white/12 bg-transparent px-0 py-2.5 text-sm text-white placeholder-white/25 transition-all duration-200 hover:border-white/22 focus:border-amber-300/55 focus:outline-none';
 export const SELECT_CLS =
-  'w-full appearance-none border-0 border-b border-white/12 bg-transparent px-0 py-2.5 text-sm text-white [color-scheme:dark] transition-all duration-200 hover:border-white/22 focus:border-white/25 focus:outline-none';
+  'w-full appearance-none border-0 border-b border-white/12 bg-transparent px-0 py-2.5 text-sm text-white [color-scheme:dark] transition-all duration-200 hover:border-white/22 focus:border-white/28 focus:outline-none';
 export const LABEL_CLS = 'text-[11px] font-medium uppercase tracking-widest text-white/40';
-export const GLASS_PANEL_CLS = 'rounded-[1.75rem] border border-white/12 bg-slate-950/42 shadow-[0_18px_50px_rgba(15,23,42,0.22)] backdrop-blur-xl';
-export const GLASS_SUB_PANEL_CLS = 'rounded-2xl border border-white/10 bg-slate-950/34 shadow-[0_12px_36px_rgba(15,23,42,0.16)] backdrop-blur-lg';
+export const GLASS_PANEL_CLS = 'liquid-glass liquid-glass--panel';
+export const GLASS_SUB_PANEL_CLS = 'liquid-glass liquid-glass--compact';
 export const WORKSPACE_MASCOT_FRAME_CLS = 'relative h-[188px] w-[282px] sm:h-[224px] sm:w-[336px] lg:h-[clamp(205px,23vw,360px)] lg:w-[clamp(308px,35vw,540px)]';
 export const WORKSPACE_MASCOT_IMG_CLS = 'pointer-events-none absolute inset-x-0 bottom-0 h-full w-full select-none object-contain object-bottom drop-shadow-[0_0_60px_rgba(250,204,21,0.22)]';
 

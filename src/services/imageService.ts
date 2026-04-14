@@ -16,6 +16,10 @@ export function resolveOpenAiImageSize(aspectRatio: string) {
   return '1024x1024';
 }
 
+export function isOpenAiAspectRatioFallback(aspectRatio: string) {
+  return aspectRatio === '4:3' || aspectRatio === '3:4';
+}
+
 export async function generateImage({
   apiKey,
   aspectRatio,
@@ -58,6 +62,7 @@ export async function generateImage({
       model,
       prompt,
       n: 1,
+      response_format: 'b64_json',
       size: resolveOpenAiImageSize(aspectRatio),
     }),
   });
@@ -68,11 +73,19 @@ export async function generateImage({
   }
 
   const data = await response.json();
-  const imageUrl = data.data?.[0]?.url;
+  const imagePayload = data.data?.[0];
 
-  if (!imageUrl) {
+  if (imagePayload?.b64_json) {
+    return `data:image/png;base64,${imagePayload.b64_json}`;
+  }
+
+  if (imagePayload?.url) {
+    return imagePayload.url;
+  }
+
+  if (!imagePayload) {
     throw new Error(t('errorImageGenerate'));
   }
 
-  return imageUrl;
+  throw new Error(t('errorImageGenerate'));
 }

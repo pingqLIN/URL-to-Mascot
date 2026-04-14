@@ -1,8 +1,19 @@
-import { Image as ImageIcon, Paintbrush, RefreshCw } from 'lucide-react';
+import { Paintbrush, RefreshCw } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { ReactNode } from 'react';
 import type { PanelVisibilityConfig } from '../types';
-import { ASPECT_RATIOS, IMAGE_MODELS, IMAGE_MODEL_NAMES, IMAGE_PROVIDERS, INPUT_CLS, LABEL_CLS, SELECT_CLS, GLASS_PANEL_CLS, STANDARD_EASE } from '../constants';
+import {
+  ASPECT_RATIOS,
+  IMAGE_MODELS,
+  IMAGE_MODEL_NAMES,
+  IMAGE_PROVIDERS,
+  INPUT_CLS,
+  LABEL_CLS,
+  SELECT_CLS,
+  GLASS_PANEL_CLS,
+  STANDARD_EASE,
+} from '../constants';
+import { isOpenAiAspectRatioFallback } from '../services/imageService';
 
 type TranslateFn = (key: string, vars?: Record<string, string | number>) => string;
 
@@ -19,7 +30,6 @@ type PreviewSectionProps = {
   imageText: string;
   setImageText: (value: string) => void;
   generatingImage: boolean;
-  generatedImage: string;
   promptText: string;
   demoMode: boolean;
   panelVisibility: PanelVisibilityConfig;
@@ -41,7 +51,6 @@ function PreviewSection({
   imageText,
   setImageText,
   generatingImage,
-  generatedImage,
   promptText,
   demoMode,
   panelVisibility,
@@ -49,7 +58,10 @@ function PreviewSection({
   onGenerate,
   t,
 }: PreviewSectionProps) {
-  const previewStatusLabel = generatedImage ? t('previewReady') : t('previewPending');
+  const previewStatusLabel = t('previewPending');
+  const stageLabel = t('workflowStepPrompt');
+  const stageDescription = t('workflowStepPromptDesc');
+  const showOpenAiAspectRatioHint = imageProvider === 'openai' && isOpenAiAspectRatioFallback(aspectRatio);
 
   return (
     <motion.section
@@ -63,10 +75,10 @@ function PreviewSection({
       <div className="mb-4 flex items-start justify-between gap-4 border-b border-white/8 pb-4">
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-300/75">
-            {t('workflowStepPreview')}
+            {stageLabel}
           </div>
-          <h2 className="mt-2 text-lg font-semibold text-white/92">{t('generatePreviewImage')}</h2>
-          <p className="mt-1 text-xs leading-relaxed text-white/42">{t('workflowStepPreviewDesc')}</p>
+          <h2 className="mt-2 text-lg font-semibold text-white/92">{stageLabel}</h2>
+          <p className="mt-1 text-xs leading-relaxed text-white/42">{stageDescription}</p>
         </div>
         <div className="rounded-xl border border-white/8 bg-white/[0.04] px-3 py-2 text-[10px] uppercase tracking-[0.22em] text-white/46">
           {previewStatusLabel}
@@ -136,6 +148,11 @@ function PreviewSection({
                 ))}
               </select>
             </div>
+            {showOpenAiAspectRatioHint ? (
+              <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-[10px] leading-relaxed text-amber-100/82">
+                {t('openAiAspectRatioHint')}
+              </div>
+            ) : null}
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -185,25 +202,6 @@ function PreviewSection({
             </>
           )}
         </motion.button>
-
-        <div className="rounded-[1.6rem] border border-white/8 bg-slate-950/46 p-4">
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.04]">
-              <ImageIcon className="h-4 w-4 text-amber-300/85" />
-            </div>
-            <div className="min-w-0 space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-semibold text-white/86">{IMAGE_MODEL_NAMES[imageModel] || imageModel}</p>
-                <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] uppercase tracking-[0.2em] text-white/44">
-                  {previewStatusLabel}
-                </span>
-              </div>
-              <p className="text-xs leading-relaxed text-white/48">
-                {generatedImage ? t('workflowStepPreviewDesc') : promptText || t('readyHint')}
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
     </motion.section>
   );

@@ -4,6 +4,7 @@ import { getReadableApiError } from '../services/errorService';
 import { generateImage } from '../services/imageService';
 import type { Locale } from '../i18n/messages';
 import type { ConceptResult, MascotType, SectionKey, TFunction, WorkflowStage } from '../types';
+import { buildConceptCacheKey, canonicalizeTargetUrl, isValidTargetUrl } from '../utils/workflow';
 
 const delay = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
@@ -15,7 +16,7 @@ type ApiConfig = {
 };
 
 type UseMascotWorkflowParams = {
-  bgResultFlash: string;
+  bgResultFlash: string | null;
   builtInGeminiKey: string;
   clearBgTimers: () => void;
   demoMode: boolean;
@@ -46,11 +47,37 @@ function buildMascotInstruction(mascotType: MascotType) {
   }
 }
 
-function addPromptConstraints(prompt: string, mascotType: MascotType, includeText: boolean, imageText: string) {
+function buildAspectRatioInstruction(aspectRatio: string) {
+  switch (aspectRatio) {
+    case '16:9':
+      return 'Composition Instruction: Compose the scene as a cinematic wide landscape frame (16:9), with broad horizontal staging, generous side-to-side environment coverage, and balanced negative space for a widescreen hero shot.';
+    case '9:16':
+      return 'Composition Instruction: Compose the scene as a tall vertical poster frame (9:16), with stacked focal hierarchy, strong upward flow, and clear top-to-bottom composition.';
+    case '4:3':
+      return 'Composition Instruction: Compose the scene in a classic 4:3 frame, with a balanced mid-distance composition and compact environmental storytelling.';
+    case '3:4':
+      return 'Composition Instruction: Compose the scene in a vertical 3:4 frame, with a portrait-oriented layout, clear vertical staging, and compact supporting details.';
+    default:
+      return 'Composition Instruction: Compose the scene for a square 1:1 frame, with centered balance, strong focal clarity, and even visual weight around the mascot.';
+  }
+}
+
+function addPromptConstraints(
+  prompt: string,
+  aspectRatio: string,
+  mascotType: MascotType,
+  includeText: boolean,
+  imageText: string,
+) {
   let nextPrompt = prompt;
+
+  nextPrompt += `\n\n${buildAspectRatioInstruction(aspectRatio)}`;
 
   if (includeText && imageText.trim()) {
     nextPrompt += `\n\nTypography Instruction: The image MUST prominently feature the text "${imageText.trim()}" integrated into the design.`;
+  } else {
+    nextPrompt +=
+      '\n\nTypography Constraint: Do not include any readable words, letters, logos, UI copy, signage, or typographic elements in the image.';
   }
 
   if (mascotType === 'animal') {
@@ -83,6 +110,7 @@ export function useMascotWorkflow({
   const [result, setResult] = useState<ConceptResult | null>(null);
   const [manualPrompt, setManualPrompt] = useState('');
   const [error, setError] = useState('');
+  const [statusMessage, setStatusMessage] = useState('');
   const [copied, setCopied] = useState(false);
   const [regeneratingPrompt, setRegeneratingPrompt] = useState(false);
   const [generatingImage, setGeneratingImage] = useState(false);
@@ -94,23 +122,39 @@ export function useMascotWorkflow({
   const analysisLanguage = locale === 'zh-TW' ? 'Traditional Chinese used in Taiwan' : 'English';
   const mascotInstruction = useMemo(() => buildMascotInstruction(mascotType), [mascotType]);
   const promptText = result ? result.section6.content : manualPrompt;
+  const effectivePromptText = useMemo(
+    () => (promptText ? addPromptConstraints(promptText, aspectRatio, mascotType, includeText, imageText) : ''),
+    [aspectRatio, imageText, includeText, mascotType, promptText],
+  );
   const entryMorphProgress = Math.max(0, Math.min(1, (url.trim().length - 2) / 6));
+  const normalizedUrl = useMemo(() => canonicalizeTargetUrl(url), [url]);
   const urlValidationError = useMemo(() => {
     const trimmed = url.trim();
     if (!trimmed) return '';
-    if (!trimmed.includes('.') && !trimmed.includes(':')) return t('errorInvalidUrlFormat');
+    if (!isValidTargetUrl(trimmed)) return t('errorInvalidUrlFormat');
     return '';
   }, [t, url]);
+
+  const getSessionCache = () => (typeof window === 'undefined' ? null : window.sessionStorage);
 
   const resolveGoogleTextKey = () =>
     textConfig.keySource === 'custom' ? textConfig.apiKey.trim() : builtInGeminiKey;
   const resolveGoogleImageKey = () =>
     imageConfig.keySource === 'custom' ? imageConfig.apiKey.trim() : builtInGeminiKey;
+  const flashResultBackground = async () => {
+    if (!bgResultFlash) {
+      return;
+    }
+
+    await flashBackground(bgResultFlash);
+    await delay(1000);
+  };
 
   const resetConceptState = () => {
     clearBgTimers();
     setLoading(true);
     setError('');
+    setStatusMessage('');
     setResult(null);
     setGeneratedImage('');
     setManualPrompt('');
@@ -119,20 +163,23 @@ export function useMascotWorkflow({
   };
 
   const handleEnterBriefStage = () => {
-    const normalizedUrl = url.trim();
-
     if (!normalizedUrl) {
       setError(t('errorNoUrl'));
-      return;
+      setStatusMessage('');
+      return false;
     }
 
-    if (!normalizedUrl.includes('.') && !normalizedUrl.includes(':')) {
+    if (!isValidTargetUrl(normalizedUrl)) {
       setError(t('errorInvalidUrlFormat'));
-      return;
+      setStatusMessage('');
+      return false;
     }
 
+    setUrl(normalizedUrl);
     setError('');
+    setStatusMessage('');
     setWorkflowStage('brief');
+    return true;
   };
 
   const handleCopy = (text: string) => {
@@ -155,25 +202,37 @@ export function useMascotWorkflow({
   };
 
   const handleGenerateConcept = async () => {
-    const normalizedUrl = url.trim();
-
     if (!normalizedUrl) {
       setError(t('errorNoUrl'));
+      setStatusMessage('');
       return;
     }
 
-    if (!normalizedUrl.includes('.') && !normalizedUrl.includes(':')) {
+    if (!isValidTargetUrl(normalizedUrl)) {
       setError(t('errorInvalidUrlFormat'));
+      setStatusMessage('');
       return;
     }
 
-    const cachedResult = sessionStorage.getItem(`url-hero-cache-${normalizedUrl}`);
+    setUrl(normalizedUrl);
+
+    const conceptCache = getSessionCache();
+    const cacheKey = buildConceptCacheKey({
+      locale,
+      mascotType,
+      model: textConfig.model,
+      provider: textConfig.provider,
+      url: normalizedUrl,
+    });
+    const cachedResult = conceptCache?.getItem(cacheKey);
+
     if (cachedResult && !demoMode) {
       try {
         setResult(JSON.parse(cachedResult));
         setGeneratedImage('');
         setManualPrompt('');
         setError('');
+        setStatusMessage(t('resultFromCache'));
         setWorkflowStage('analysis');
         return;
       } catch {
@@ -186,8 +245,7 @@ export function useMascotWorkflow({
     try {
       if (demoMode) {
         await delay(520);
-        await flashBackground(bgResultFlash);
-        await delay(1000);
+        await flashResultBackground();
         setResult(buildDemoConceptResult({ locale, url: normalizedUrl }));
         setWorkflowStage('analysis');
         return;
@@ -215,13 +273,13 @@ export function useMascotWorkflow({
         url: normalizedUrl,
       });
 
-      await flashBackground(bgResultFlash);
-      await delay(1000);
+      await flashResultBackground();
       setResult(nextResult);
+      setStatusMessage('');
       setWorkflowStage('analysis');
 
       try {
-        sessionStorage.setItem(`url-hero-cache-${normalizedUrl}`, JSON.stringify(nextResult));
+        conceptCache?.setItem(cacheKey, JSON.stringify(nextResult));
       } catch {
         // Ignore cache write failures.
       }
@@ -234,6 +292,7 @@ export function useMascotWorkflow({
           t,
         }),
       );
+      setStatusMessage('');
     } finally {
       setLoading(false);
     }
@@ -244,6 +303,7 @@ export function useMascotWorkflow({
 
     setRegeneratingPrompt(true);
     setError('');
+    setStatusMessage('');
 
     try {
       if (demoMode) {
@@ -301,15 +361,32 @@ export function useMascotWorkflow({
 
   const handleGeneratePreviewImage = async () => {
     if (!promptText) {
+      setStatusMessage('');
       setError(t('errorNoPrompt'));
       return;
     }
 
-    const promptToUse = addPromptConstraints(promptText, mascotType, includeText, imageText);
+    const usingGoogleImage = imageConfig.provider === 'google';
+    const resolvedGoogleImageKey = usingGoogleImage ? resolveGoogleImageKey() : '';
+
+    if (usingGoogleImage && !resolvedGoogleImageKey) {
+      setStatusMessage('');
+      setError(t('errorNoApiKey'));
+      return;
+    }
+
+    if (imageConfig.provider === 'openai' && !imageConfig.apiKey.trim()) {
+      setStatusMessage('');
+      setError(t('errorOpenAiKey'));
+      return;
+    }
 
     setGeneratingImage(true);
+    setGeneratedImage('');
     setError('');
+    setStatusMessage('');
     clearBgTimers();
+    setWorkflowStage('preview');
 
     try {
       if (demoMode) {
@@ -323,52 +400,34 @@ export function useMascotWorkflow({
                 ? demoImages.object
                 : demoImages.auto;
 
-        await flashBackground(bgResultFlash);
-        await delay(1000);
         setGeneratedImage(demoImage);
-        setWorkflowStage('preview');
         return;
       }
 
-      if (imageConfig.provider === 'google') {
-        const apiKey = resolveGoogleImageKey();
-        if (!apiKey) {
-          throw new Error(t('errorNoApiKey'));
-        }
-
+      if (usingGoogleImage) {
         const nextImage = await generateImage({
-          apiKey,
+          apiKey: resolvedGoogleImageKey,
           aspectRatio,
           model: imageConfig.model,
-          prompt: promptToUse,
+          prompt: effectivePromptText,
           provider: 'google',
           t,
         });
 
-        await flashBackground(bgResultFlash);
-        await delay(1000);
         setGeneratedImage(nextImage);
-        setWorkflowStage('preview');
         return;
-      }
-
-      if (!imageConfig.apiKey.trim()) {
-        throw new Error(t('errorOpenAiKey'));
       }
 
       const nextImage = await generateImage({
         apiKey: imageConfig.apiKey.trim(),
         aspectRatio,
         model: imageConfig.model,
-        prompt: promptToUse,
+        prompt: effectivePromptText,
         provider: 'openai',
         t,
       });
 
-      await flashBackground(bgResultFlash);
-      await delay(1000);
       setGeneratedImage(nextImage);
-      setWorkflowStage('preview');
     } catch (imageError) {
       setError(
         getReadableApiError({
@@ -378,6 +437,8 @@ export function useMascotWorkflow({
           t,
         }),
       );
+      setStatusMessage('');
+      setWorkflowStage('prompt');
     } finally {
       setGeneratingImage(false);
     }
@@ -387,7 +448,9 @@ export function useMascotWorkflow({
     aspectRatio,
     copied,
     entryMorphProgress,
+    effectivePromptText,
     error,
+    statusMessage,
     generatedImage,
     generatingImage,
     handleContentChange,
