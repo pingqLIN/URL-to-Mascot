@@ -40,8 +40,6 @@ function BriefSection({
   onGenerate,
   t,
 }: BriefSectionProps) {
-  const isSupportedTextProvider = (providerId: string) => providerId === 'google';
-
   return (
     <motion.section
       initial={false}
@@ -76,7 +74,6 @@ function BriefSection({
               options={PROVIDERS.map((item) => ({
                 value: item.id,
                 label: item.name,
-                disabled: !isSupportedTextProvider(item.id),
               }))}
             />
             <div className="text-[10px] leading-relaxed text-white/45">{t('textProviderSupportHint')}</div>

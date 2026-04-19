@@ -25,6 +25,7 @@ import { useMascotWorkflow } from './hooks/useMascotWorkflow';
 import { useWorkflow } from './hooks/useWorkflow';
 import { useWorkspaceSettings } from './hooks/useWorkspaceSettings';
 import { useI18n } from './i18n/useI18n';
+import type { ProviderApiKeyMap } from './types';
 import heroActive from '../HERO/AB.png';
 import heroIdle from '../HERO/AA2.png';
 import heroWorkspace from '../HERO/A.png';
@@ -36,12 +37,16 @@ import tb03 from '../HERO/TB_03.jpg';
 import tb04 from '../HERO/TB_04.jpg';
 import tb05 from '../HERO/TB_05.jpg';
 
-const builtInGeminiKey =
-  (process.env as Record<string, string | undefined>).API_KEY ||
-  (process.env as Record<string, string | undefined>).GEMINI_API_KEY ||
-  '';
+const builtInApiKeys: ProviderApiKeyMap = {
+  google:
+    (process.env as Record<string, string | undefined>).API_KEY ||
+    (process.env as Record<string, string | undefined>).GEMINI_API_KEY ||
+    '',
+  openai: (process.env as Record<string, string | undefined>).OPENAI_API_KEY || '',
+  anthropic: (process.env as Record<string, string | undefined>).ANTHROPIC_API_KEY || '',
+};
 
-const hasBuiltInGeminiKey = Boolean(builtInGeminiKey);
+const hasBuiltInKey = Object.values(builtInApiKeys).some(Boolean);
 const APP_BG_SEQUENCE = [tb00, tb01, tb02, tb03, tb04, tb05];
 const DEMO_IMAGES = {
   animal: heroActive,
@@ -52,9 +57,9 @@ const DEMO_IMAGES = {
 
 export default function App() {
   const { locale, setLocale, t } = useI18n();
-  const { demoMode, setDemoMode, hasPaidKey, handleSelectKey } = useKeyDetection(hasBuiltInGeminiKey);
-  const textConfig = useApiKeyConfig('text', hasBuiltInGeminiKey, hasPaidKey);
-  const imageConfig = useApiKeyConfig('image', hasBuiltInGeminiKey, hasPaidKey);
+  const { demoMode, setDemoMode, hasPaidKey, handleSelectKey } = useKeyDetection(hasBuiltInKey);
+  const textConfig = useApiKeyConfig('text', builtInApiKeys, hasPaidKey);
+  const imageConfig = useApiKeyConfig('image', builtInApiKeys, hasPaidKey);
   const { bgOverride, flashBackground, clearBgTimers } = useBgFlash();
   const {
     stage: workflowStage,
@@ -106,7 +111,7 @@ export default function App() {
     urlValidationError,
   } = useMascotWorkflow({
     bgResultFlash: null,
-    builtInGeminiKey,
+    builtInApiKeys,
     clearBgTimers,
     demoMode,
     demoImages: DEMO_IMAGES,
@@ -429,7 +434,7 @@ export default function App() {
                                 setKeySource={textConfig.setKeySource}
                                 keyValue={textConfig.apiKey}
                                 setKeyValue={textConfig.setApiKey}
-                                hasBuiltInGeminiKey={hasBuiltInGeminiKey}
+                                builtInApiKeys={builtInApiKeys}
                                 hasPaidKey={hasPaidKey}
                                 onSelectKey={handleSelectKey}
                                 t={t}
@@ -499,7 +504,7 @@ export default function App() {
                                 setKeySource={imageConfig.setKeySource}
                                 keyValue={imageConfig.apiKey}
                                 setKeyValue={imageConfig.setApiKey}
-                                hasBuiltInGeminiKey={hasBuiltInGeminiKey}
+                                builtInApiKeys={builtInApiKeys}
                                 hasPaidKey={hasPaidKey}
                                 onSelectKey={handleSelectKey}
                                 t={t}
@@ -555,7 +560,7 @@ export default function App() {
         ) : null}
       </AnimatePresence>
       <AnimatePresence>
-        {showLogViewer && <LogViewer key="logviewer" onClose={() => setShowLogViewer(false)} />}
+        {showLogViewer && <LogViewer onClose={() => setShowLogViewer(false)} />}
       </AnimatePresence>
     </div>
   );

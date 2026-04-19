@@ -2,6 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { messages } from '../i18n/messages';
 import { buildDemoConceptResult } from '../services/conceptService';
+import type { ImageProvider, KeySource, ProviderApiKeyMap, TextProvider } from '../types';
 import { buildConceptCacheKey } from '../utils/workflow';
 import { useMascotWorkflow } from './useMascotWorkflow';
 
@@ -11,6 +12,11 @@ const { fetchConceptMock } = vi.hoisted(() => ({
 
 const { generateImageMock } = vi.hoisted(() => ({
   generateImageMock: vi.fn(),
+}));
+
+vi.mock('../utils/imageUtils', () => ({
+  compositeImages: vi.fn(async (_background: string, foreground: string) => foreground),
+  removeWhiteBackground: vi.fn(async (src: string) => src),
 }));
 
 vi.mock('../services/conceptService', async () => {
@@ -32,9 +38,15 @@ const interpolate = (template: string, vars?: Record<string, string | number>) =
 const t = (key: keyof typeof messages.en, vars?: Record<string, string | number>) => interpolate(messages.en[key], vars);
 
 function createParams() {
+  const builtInApiKeys: ProviderApiKeyMap = {
+    anthropic: '',
+    google: 'gemini-test-key',
+    openai: '',
+  };
+
   return {
     bgResultFlash: null,
-    builtInGeminiKey: 'gemini-test-key',
+    builtInApiKeys,
     clearBgTimers: vi.fn(),
     demoMode: false,
     demoImages: {
@@ -46,18 +58,18 @@ function createParams() {
     flashBackground: vi.fn().mockResolvedValue(undefined),
     imageConfig: {
       apiKey: '',
-      keySource: 'builtin' as const,
+      keySource: 'builtin' as KeySource,
       model: 'gemini-2.5-flash-image',
-      provider: 'google',
+      provider: 'google' as ImageProvider,
     },
     locale: 'en' as const,
     setWorkflowStage: vi.fn(),
     t,
     textConfig: {
       apiKey: '',
-      keySource: 'builtin' as const,
+      keySource: 'builtin' as KeySource,
       model: 'gemini-2.5-flash',
-      provider: 'google',
+      provider: 'google' as TextProvider,
     },
   };
 }
@@ -167,6 +179,36 @@ describe('useMascotWorkflow', () => {
     ).toBe(JSON.stringify(liveResult));
   });
 
+  it('routes OpenAI text generation through the live concept service when a custom key is provided', async () => {
+    const params = createParams();
+    const liveResult = buildDemoConceptResult({ locale: 'en', url: 'example.com' });
+    fetchConceptMock.mockResolvedValue(liveResult);
+    params.textConfig.provider = 'openai';
+    params.textConfig.model = 'gpt-5.2';
+    params.textConfig.keySource = 'custom';
+    params.textConfig.apiKey = 'openai-test-key';
+
+    const { result } = renderHook(() => useMascotWorkflow(params));
+
+    act(() => {
+      result.current.setUrl('example.com');
+    });
+
+    await act(async () => {
+      await result.current.handleGenerateConcept();
+    });
+
+    expect(fetchConceptMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        apiKey: 'openai-test-key',
+        model: 'gpt-5.2',
+        provider: 'openai',
+        url: 'example.com',
+      }),
+    );
+    expect(result.current.result).toEqual(liveResult);
+  });
+
   it('clears cache status when preview generation fails later', async () => {
     const params = createParams();
     params.imageConfig.provider = 'openai';
@@ -233,17 +275,17 @@ describe('useMascotWorkflow', () => {
     expect(result.current.generatingImage).toBe(false);
   });
 
-  it('injects aspect ratio and typography constraints into the image prompt', async () => {
+  it('injects aspect ratio and URL hologram constraints into the image prompt', async () => {
     const params = createParams();
     generateImageMock.mockResolvedValue('data:image/png;base64,preview');
 
     const { result } = renderHook(() => useMascotWorkflow(params));
 
     act(() => {
+      result.current.setUrl('example.com');
       result.current.setManualPrompt('Prompt is ready');
       result.current.setAspectRatio('16:9');
       result.current.setIncludeText(true);
-      result.current.setImageText('HELLO WORLD');
     });
 
     await act(async () => {
@@ -258,7 +300,7 @@ describe('useMascotWorkflow', () => {
     );
     expect(generateImageMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        prompt: expect.stringContaining('The image MUST prominently feature the text "HELLO WORLD"'),
+        prompt: expect.stringContaining('The URL "example.com" must be prominently displayed as a glowing neon hologram'),
       }),
     );
   });
@@ -288,6 +330,33 @@ describe('useMascotWorkflow', () => {
     expect(generateImageMock).toHaveBeenCalledWith(
       expect.objectContaining({
         prompt: expect.stringContaining('portrait-oriented layout'),
+      }),
+    );
+  });
+
+  it('uses a built-in OpenAI image key when one is available', async () => {
+    const params = createParams();
+    params.builtInApiKeys.openai = 'openai-image-key';
+    params.imageConfig.provider = 'openai';
+    params.imageConfig.keySource = 'builtin';
+    params.imageConfig.model = 'gpt-image-1.5';
+    generateImageMock.mockResolvedValue('data:image/png;base64,preview');
+
+    const { result } = renderHook(() => useMascotWorkflow(params));
+
+    act(() => {
+      result.current.setManualPrompt('Prompt is ready');
+    });
+
+    await act(async () => {
+      await result.current.handleGeneratePreviewImage();
+    });
+
+    expect(generateImageMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        apiKey: 'openai-image-key',
+        model: 'gpt-image-1.5',
+        provider: 'openai',
       }),
     );
   });

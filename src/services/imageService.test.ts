@@ -9,8 +9,8 @@ afterEach(() => {
 
 describe('resolveOpenAiImageSize', () => {
   it('maps supported aspect ratios to OpenAI image sizes', () => {
-    expect(resolveOpenAiImageSize('16:9')).toBe('1792x1024');
-    expect(resolveOpenAiImageSize('9:16')).toBe('1024x1792');
+    expect(resolveOpenAiImageSize('16:9')).toBe('1536x1024');
+    expect(resolveOpenAiImageSize('9:16')).toBe('1024x1536');
     expect(resolveOpenAiImageSize('1:1')).toBe('1024x1024');
   });
 
@@ -36,7 +36,7 @@ describe('generateImage', () => {
       generateImage({
         apiKey: 'openai-key',
         aspectRatio: '4:3',
-        model: 'dall-e-3',
+        model: 'gpt-image-1.5',
         prompt: 'Render a mascot.',
         provider: 'openai',
         t,

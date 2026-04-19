@@ -5,6 +5,11 @@ export type AiStudioBridge = {
   openSelectKey: () => Promise<void>;
 };
 
+export type TextProvider = 'google' | 'openai' | 'anthropic';
+export type ImageProvider = 'google' | 'openai';
+export type ProviderId = TextProvider;
+export type ProviderApiKeyMap = Record<ProviderId, string>;
+
 export type MascotType = 'auto' | 'animal' | 'human' | 'object';
 export type KeySource = 'builtin' | 'custom' | 'selected';
 export type SectionKey = 'section1' | 'section2' | 'section3' | 'section4' | 'section5' | 'section6';

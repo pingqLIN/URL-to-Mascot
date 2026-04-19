@@ -34,7 +34,7 @@ const footerContent: Record<Locale, Record<FooterPanelKey, FooterPanelContent>> 
           heading: 'What this project does',
           body: [
             'Generate a six-part mascot brief from a URL, including concept, character design, props, environment, lighting, and a final English image prompt.',
-            'Support live text generation with Google Gemini and preview image generation with Gemini image models or OpenAI DALL·E.',
+            'Support live text generation with Google Gemini, OpenAI, and Anthropic, plus preview image generation with Gemini or OpenAI image models.',
           ],
         },
         {
@@ -82,8 +82,8 @@ const footerContent: Record<Locale, Record<FooterPanelKey, FooterPanelContent>> 
         {
           heading: 'How requests are handled',
           body: [
-            'Live text generation requests are sent to Google Gemini from the browser when Google is selected.',
-            'Preview image requests are sent from the browser to the selected provider, such as Google Gemini or OpenAI image generation endpoints.',
+            'Live text generation requests are sent from the browser to the selected provider, including Google Gemini, OpenAI, or Anthropic.',
+            'Preview image requests are sent from the browser to the selected image provider, such as Google Gemini or OpenAI image generation endpoints.',
           ],
         },
         {
@@ -120,7 +120,7 @@ const footerContent: Record<Locale, Record<FooterPanelKey, FooterPanelContent>> 
           heading: '專案用途',
           body: [
             '根據 URL 生成六段式 mascot brief，包含核心概念、角色設定、道具、環境、光線與最後的英文圖像 prompt。',
-            '支援 Google Gemini 文字生成，以及 Gemini 圖像模型或 OpenAI DALL·E 的預覽圖輸出。',
+            '支援 Google Gemini、OpenAI、Anthropic 的文字生成，以及 Gemini 或 OpenAI 圖像模型的預覽圖輸出。',
           ],
         },
         {
@@ -168,8 +168,8 @@ const footerContent: Record<Locale, Record<FooterPanelKey, FooterPanelContent>> 
         {
           heading: '請求如何送出',
           body: [
-            '當使用 Google 時，文字生成請求會直接從瀏覽器送到 Google Gemini。',
-            '預覽圖請求也會直接從瀏覽器送到所選 provider，例如 Google Gemini 或 OpenAI 圖像生成端點。',
+            '文字生成請求會依照所選 provider，直接從瀏覽器送到 Google Gemini、OpenAI 或 Anthropic。',
+            '預覽圖請求也會直接從瀏覽器送到所選圖像 provider，例如 Google Gemini 或 OpenAI 圖像生成端點。',
           ],
         },
         {

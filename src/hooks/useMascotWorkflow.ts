@@ -3,21 +3,33 @@ import { buildDemoConceptResult, buildSystemPrompt, fetchConcept, fetchRegenerat
 import { getReadableApiError } from '../services/errorService';
 import { generateImage } from '../services/imageService';
 import type { Locale } from '../i18n/messages';
-import type { ConceptResult, MascotType, SectionKey, TFunction, WorkflowStage } from '../types';
+import type {
+  ConceptResult,
+  ImageProvider,
+  MascotType,
+  ProviderApiKeyMap,
+  SectionKey,
+  TFunction,
+  TextProvider,
+  WorkflowStage,
+} from '../types';
 import { buildConceptCacheKey, canonicalizeTargetUrl, isValidTargetUrl } from '../utils/workflow';
 
 const delay = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
-type ApiConfig = {
+type BaseApiConfig<TProvider extends TextProvider | ImageProvider> = {
   apiKey: string;
   keySource: 'builtin' | 'custom' | 'selected';
   model: string;
-  provider: string;
+  provider: TProvider;
 };
+
+type TextApiConfig = BaseApiConfig<TextProvider>;
+type ImageApiConfig = BaseApiConfig<ImageProvider>;
 
 type UseMascotWorkflowParams = {
   bgResultFlash: string | null;
-  builtInGeminiKey: string;
+  builtInApiKeys: ProviderApiKeyMap;
   clearBgTimers: () => void;
   demoMode: boolean;
   demoImages: {
@@ -27,11 +39,11 @@ type UseMascotWorkflowParams = {
     auto: string;
   };
   flashBackground: (flashImage: string, durationMs?: number) => Promise<void>;
-  imageConfig: ApiConfig;
+  imageConfig: ImageApiConfig;
   locale: Locale;
   setWorkflowStage: (stage: WorkflowStage) => void;
   t: TFunction;
-  textConfig: ApiConfig;
+  textConfig: TextApiConfig;
 };
 
 function buildMascotInstruction(mascotType: MascotType) {
@@ -95,7 +107,7 @@ import { removeWhiteBackground, compositeImages } from '../utils/imageUtils';
 
 export function useMascotWorkflow({
   bgResultFlash,
-  builtInGeminiKey,
+  builtInApiKeys,
   clearBgTimers,
   demoMode,
   demoImages,
@@ -140,11 +152,8 @@ export function useMascotWorkflow({
   }, [t, url]);
 
   const getSessionCache = () => (typeof window === 'undefined' ? null : window.sessionStorage);
-
-  const resolveGoogleTextKey = () =>
-    textConfig.keySource === 'custom' ? textConfig.apiKey.trim() : builtInGeminiKey;
-  const resolveGoogleImageKey = () =>
-    imageConfig.keySource === 'custom' ? imageConfig.apiKey.trim() : builtInGeminiKey;
+  const resolveApiKey = (config: BaseApiConfig<TextProvider | ImageProvider>) =>
+    config.keySource === 'custom' ? config.apiKey.trim() : builtInApiKeys[config.provider] || '';
   const flashResultBackground = async () => {
     if (!bgResultFlash) {
       return;
@@ -255,11 +264,7 @@ export function useMascotWorkflow({
         return;
       }
 
-      if (textConfig.provider !== 'google') {
-        throw new Error(t('errorCors'));
-      }
-
-      const apiKey = resolveGoogleTextKey();
+      const apiKey = resolveApiKey(textConfig);
       if (!apiKey) {
         throw new Error(t('errorNoApiKey'));
       }
@@ -267,6 +272,7 @@ export function useMascotWorkflow({
       const nextResult = await fetchConcept({
         apiKey,
         model: textConfig.model,
+        provider: textConfig.provider,
         systemPrompt: buildSystemPrompt({
           analysisLanguage,
           mascotInstruction,
@@ -327,11 +333,7 @@ export function useMascotWorkflow({
         return;
       }
 
-      if (textConfig.provider !== 'google') {
-        throw new Error(t('errorCors'));
-      }
-
-      const apiKey = resolveGoogleTextKey();
+      const apiKey = resolveApiKey(textConfig);
       if (!apiKey) {
         throw new Error(t('errorNoApiKey'));
       }
@@ -342,6 +344,7 @@ export function useMascotWorkflow({
         apiKey,
         mascotInstruction: instructionToUse,
         model: textConfig.model,
+        provider: textConfig.provider,
         result,
         t,
         url: url.trim(),
@@ -390,11 +393,7 @@ export function useMascotWorkflow({
         return;
       }
 
-      if (textConfig.provider !== 'google') {
-        throw new Error(t('errorCors'));
-      }
-
-      const apiKey = resolveGoogleTextKey();
+      const apiKey = resolveApiKey(textConfig);
       if (!apiKey) {
         throw new Error(t('errorNoApiKey'));
       }
@@ -402,6 +401,7 @@ export function useMascotWorkflow({
       const nextContent = await fetchRegeneratedSection({
         apiKey,
         model: textConfig.model,
+        provider: textConfig.provider,
         result,
         section,
         t,
@@ -432,18 +432,11 @@ export function useMascotWorkflow({
       return;
     }
 
-    const usingGoogleImage = imageConfig.provider === 'google';
-    const resolvedGoogleImageKey = usingGoogleImage ? resolveGoogleImageKey() : '';
+    const resolvedImageKey = resolveApiKey(imageConfig);
 
-    if (usingGoogleImage && !resolvedGoogleImageKey) {
+    if (!resolvedImageKey) {
       setStatusMessage('');
-      setError(t('errorNoApiKey'));
-      return;
-    }
-
-    if (imageConfig.provider === 'openai' && !imageConfig.apiKey.trim()) {
-      setStatusMessage('');
-      setError(t('errorOpenAiKey'));
+      setError(imageConfig.provider === 'openai' ? t('errorOpenAiKey') : t('errorNoApiKey'));
       return;
     }
 
@@ -472,6 +465,16 @@ export function useMascotWorkflow({
         return;
       }
 
+      const generateWithProvider = (prompt: string) =>
+        generateImage({
+          apiKey: resolvedImageKey,
+          aspectRatio,
+          model: imageConfig.model,
+          prompt,
+          provider: imageConfig.provider,
+          t,
+        });
+
       const characterOnlyBasePrompt = result
         ? `${result.section1.content}. ${result.section2.content}. ${result.section3.content}. ${result.section5.content}. CRITICAL: Isolated on a clean, solid white background, no environment, no background elements. CRITICAL LIGHTING MATCH: Provide dramatic and highly realistic dynamic lighting, strong rim light, and ambient occlusion so the 3D character has robust volume, depth, and blends flawlessly into a high-end composited scene.`
         : `${manualPrompt}. CRITICAL: Isolated on a clean, solid white background, no environment, no background elements. CRITICAL LIGHTING MATCH: Provide dramatic and highly realistic dynamic lighting, strong rim light, and ambient occlusion so the 3D character has robust volume, depth, and blends flawlessly into a high-end composited scene.`;
@@ -481,52 +484,9 @@ export function useMascotWorkflow({
         ? `${result.section4.content}. ${result.section5.content}. CRITICAL: ONLY generate the background environment. NO characters, NO mascot, completely empty landscape/scene.`
         : `${manualPrompt}. CRITICAL: ONLY generate the background environment. NO characters, NO mascot, completely empty landscape/scene.`;
       const effectiveEnvironmentOnlyPrompt = addPromptConstraints(environmentOnlyBasePrompt, aspectRatio, mascotType, false, '');
-
-      if (usingGoogleImage) {
-        const [nextBgImageRaw, nextCharacterImageRaw] = await Promise.all([
-          generateImage({
-            apiKey: resolvedGoogleImageKey,
-            aspectRatio,
-            model: imageConfig.model,
-            prompt: effectiveEnvironmentOnlyPrompt,
-            provider: 'google',
-            t,
-          }),
-          generateImage({
-            apiKey: resolvedGoogleImageKey,
-            aspectRatio,
-            model: imageConfig.model,
-            prompt: effectiveCharacterOnlyPrompt,
-            provider: 'google',
-            t,
-          })
-        ]);
-
-        const nextCharacterImage = await removeWhiteBackground(nextCharacterImageRaw);
-        const nextImage = await compositeImages(nextBgImageRaw, nextCharacterImage);
-
-        setGeneratedImage(nextImage);
-        setPreviewCharacterImage(nextCharacterImage);
-        return;
-      }
-
       const [nextBgImageRaw, nextCharacterImageRaw] = await Promise.all([
-        generateImage({
-          apiKey: imageConfig.apiKey.trim(),
-          aspectRatio,
-          model: imageConfig.model,
-          prompt: effectiveEnvironmentOnlyPrompt,
-          provider: 'openai',
-          t,
-        }),
-        generateImage({
-          apiKey: imageConfig.apiKey.trim(),
-          aspectRatio,
-          model: imageConfig.model,
-          prompt: effectiveCharacterOnlyPrompt,
-          provider: 'openai',
-          t,
-        })
+        generateWithProvider(effectiveEnvironmentOnlyPrompt),
+        generateWithProvider(effectiveCharacterOnlyPrompt),
       ]);
 
       const nextCharacterImage = await removeWhiteBackground(nextCharacterImageRaw);

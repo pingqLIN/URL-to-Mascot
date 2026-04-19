@@ -1,5 +1,5 @@
 import { Key, ExternalLink } from 'lucide-react';
-import type { KeySource } from '../types';
+import type { KeySource, ProviderApiKeyMap } from '../types';
 import { LABEL_CLS, SELECT_CLS, PROVIDERS, IMAGE_PROVIDERS } from '../constants';
 
 type TranslateFn = (key: string, vars?: Record<string, string | number>) => string;
@@ -13,7 +13,7 @@ type KeyConfigPanelProps = {
   setKeySource: (value: KeySource) => void;
   keyValue: string;
   setKeyValue: (value: string) => void;
-  hasBuiltInGeminiKey: boolean;
+  builtInApiKeys: ProviderApiKeyMap;
   hasPaidKey: boolean;
   onSelectKey: () => void;
   t: TranslateFn;
@@ -28,11 +28,24 @@ function KeyConfigPanel({
   setKeySource,
   keyValue,
   setKeyValue,
-  hasBuiltInGeminiKey,
+  builtInApiKeys,
   hasPaidKey,
   onSelectKey,
   t,
 }: KeyConfigPanelProps) {
+  const hasBuiltInKey = Boolean(builtInApiKeys[provider as keyof ProviderApiKeyMap]);
+  const keySourceOptions =
+    provider === 'google'
+      ? [
+          ...(hasBuiltInKey ? [{ value: 'builtin', label: t('builtInKey') }] : []),
+          { value: 'custom', label: t('customKey') },
+          { value: 'selected', label: t('selectedPaidKey') },
+        ]
+      : [
+          ...(hasBuiltInKey ? [{ value: 'builtin', label: t('builtInKey') }] : []),
+          { value: 'custom', label: t('customKey') },
+        ];
+
   return (
     <div className="space-y-3 pt-1">
       <span className={LABEL_CLS}>{t('authentication')}</span>
@@ -48,20 +61,24 @@ function KeyConfigPanel({
       </select>
 
       {authMethod === 'apikey' ? (
-        provider === 'google' ? (
+        provider === 'google' || hasBuiltInKey ? (
           <div className="space-y-2">
-            <select
-              value={keySource}
-              onChange={(e) => setKeySource(e.target.value as KeySource)}
-              className={SELECT_CLS}
-              title={t('authentication')}
-              aria-label={t('authentication')}
-            >
-              {hasBuiltInGeminiKey && <option value="builtin">{t('builtInKey')}</option>}
-              <option value="custom">{t('customKey')}</option>
-              <option value="selected">{t('selectedPaidKey')}</option>
-            </select>
-            {keySource === 'selected' && (
+            {keySourceOptions.length > 1 ? (
+              <select
+                value={keySource}
+                onChange={(e) => setKeySource(e.target.value as KeySource)}
+                className={SELECT_CLS}
+                title={t('authentication')}
+                aria-label={t('authentication')}
+              >
+                {keySourceOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+            {provider === 'google' && keySource === 'selected' ? (
               <button
                 type="button"
                 onClick={onSelectKey}
@@ -69,8 +86,8 @@ function KeyConfigPanel({
               >
                 {hasPaidKey ? t('keySelected') : t('selectPaidKey')}
               </button>
-            )}
-            {keySource === 'custom' && (
+            ) : null}
+            {keySource === 'custom' ? (
               <div className="relative">
                 <Key className="absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/30" />
                 <input
@@ -82,7 +99,7 @@ function KeyConfigPanel({
                   className="w-full border-0 border-b border-white/12 bg-transparent py-2.5 pl-10 pr-0 font-mono text-xs text-white placeholder-white/25 focus:border-amber-500/50 focus:outline-none"
                 />
               </div>
-            )}
+            ) : null}
           </div>
         ) : (
           <div className="relative">

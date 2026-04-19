@@ -59,6 +59,7 @@ function ConceptHarness({
       onManualPromptChange={vi.fn()}
       onCopy={copySpy}
       onRegeneratePrompt={regeneratePromptSpy}
+      onRegenerateSection={vi.fn().mockResolvedValue(undefined)}
       renderWorkflowStepper={() => <div>Stepper</div>}
       t={t}
     />

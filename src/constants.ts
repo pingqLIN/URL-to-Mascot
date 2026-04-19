@@ -1,4 +1,4 @@
-import type { WorkflowStage } from './types';
+import type { ImageProvider, TextProvider, WorkflowStage } from './types';
 
 // ─── Aspect ratios ──────────────────────────────────────────────────────────
 export const ASPECT_RATIOS = [
@@ -16,28 +16,36 @@ export const PROVIDERS = [
   { id: 'anthropic', name: 'Anthropic' },
 ] as const;
 
-export const MODELS: Record<string, string[]> = {
+export const MODELS: Record<TextProvider, string[]> = {
   google: ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-1.5-pro', 'gemini-1.5-flash'],
-  openai: ['gpt-5.2', 'gpt-5.2-mini', 'gpt-4o', 'gpt-4o-mini', 'o1', 'o3-mini'],
-  anthropic: ['claude-4-6-sonnet', 'claude-4-5-opus', 'claude-3-7-sonnet-20250219', 'claude-3-5-haiku-20241022'],
+  openai: ['gpt-5.2', 'gpt-5.2-mini', 'gpt-4.1', 'gpt-4.1-mini', 'o4-mini', 'o1'],
+  anthropic: [
+    'claude-sonnet-4-0',
+    'claude-opus-4-1-20250805',
+    'claude-3-7-sonnet-latest',
+    'claude-3-5-sonnet-latest',
+    'claude-3-5-haiku-latest',
+  ],
 };
 
 export const IMAGE_PROVIDERS = [
   { id: 'google', name: 'Google (Gemini)' },
-  { id: 'openai', name: 'OpenAI (DALL-E)' },
+  { id: 'openai', name: 'OpenAI' },
 ] as const;
 
-export const IMAGE_MODELS: Record<string, string[]> = {
+export const IMAGE_MODELS: Record<ImageProvider, string[]> = {
   google: ['gemini-2.5-flash-image', 'gemini-3.1-flash-image-preview', 'gemini-3-pro-image-preview'],
-  openai: ['dall-e-3', 'dall-e-2'],
+  openai: ['gpt-image-1.5', 'gpt-image-1', 'gpt-image-1-mini', 'dall-e-3'],
 };
 
 export const IMAGE_MODEL_NAMES: Record<string, string> = {
   'gemini-2.5-flash-image': 'Nano Banana (Gemini 2.5 Flash Image)',
   'gemini-3.1-flash-image-preview': 'Nano Banana 2 (Gemini 3.1 Flash Image)',
   'gemini-3-pro-image-preview': 'Nano Banana Pro (Gemini 3 Pro Image)',
+  'gpt-image-1.5': 'GPT Image 1.5',
+  'gpt-image-1': 'GPT Image 1',
+  'gpt-image-1-mini': 'GPT Image 1 Mini',
   'dall-e-3': 'DALL-E 3',
-  'dall-e-2': 'DALL-E 2',
 };
 
 export const WORKFLOW_STAGES: WorkflowStage[] = ['entry', 'brief', 'analysis', 'prompt', 'preview'];

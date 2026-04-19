@@ -2,9 +2,24 @@ import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { useApiKeyConfig } from './useApiKeyConfig';
 
+const emptyBuiltInKeys = {
+  anthropic: '',
+  google: '',
+  openai: '',
+} as const;
+
 describe('useApiKeyConfig', () => {
   it('defaults to builtin source when a bundled Gemini key exists', () => {
-    const { result } = renderHook(() => useApiKeyConfig('text', true, false));
+    const { result } = renderHook(() =>
+      useApiKeyConfig(
+        'text',
+        {
+          ...emptyBuiltInKeys,
+          google: 'gemini-test-key',
+        },
+        false,
+      ),
+    );
 
     expect(result.current.provider).toBe('google');
     expect(result.current.model).toBe('gemini-2.5-flash');
@@ -12,7 +27,16 @@ describe('useApiKeyConfig', () => {
   });
 
   it('switches to provider defaults and forces custom keys for non-Google providers', () => {
-    const { result } = renderHook(() => useApiKeyConfig('text', true, false));
+    const { result } = renderHook(() =>
+      useApiKeyConfig(
+        'text',
+        {
+          ...emptyBuiltInKeys,
+          google: 'gemini-test-key',
+        },
+        false,
+      ),
+    );
 
     act(() => {
       result.current.setProvider('openai');
@@ -24,7 +48,7 @@ describe('useApiKeyConfig', () => {
 
   it('falls back from selected to custom when paid keys are unavailable', () => {
     const { result, rerender } = renderHook(
-      ({ hasPaidKey }) => useApiKeyConfig('image', false, hasPaidKey),
+      ({ hasPaidKey }) => useApiKeyConfig('image', emptyBuiltInKeys, hasPaidKey),
       { initialProps: { hasPaidKey: true } },
     );
 
@@ -35,5 +59,25 @@ describe('useApiKeyConfig', () => {
     rerender({ hasPaidKey: false });
 
     expect(result.current.keySource).toBe('custom');
+  });
+
+  it('uses builtin mode for OpenAI when an env-backed key is available', () => {
+    const { result } = renderHook(() =>
+      useApiKeyConfig(
+        'text',
+        {
+          ...emptyBuiltInKeys,
+          openai: 'openai-test-key',
+        },
+        false,
+      ),
+    );
+
+    act(() => {
+      result.current.setProvider('openai');
+    });
+
+    expect(result.current.model).toBe('gpt-5.2');
+    expect(result.current.keySource).toBe('builtin');
   });
 });

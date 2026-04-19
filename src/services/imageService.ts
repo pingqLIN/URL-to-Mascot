@@ -1,18 +1,18 @@
 import { GoogleGenAI } from '@google/genai';
-import type { TFunction } from '../types';
+import type { ImageProvider, TFunction } from '../types';
 
 type GenerateImageParams = {
   apiKey: string;
   aspectRatio: string;
   model: string;
   prompt: string;
-  provider: 'google' | 'openai';
+  provider: ImageProvider;
   t: TFunction;
 };
 
 export function resolveOpenAiImageSize(aspectRatio: string) {
-  if (aspectRatio === '16:9') return '1792x1024';
-  if (aspectRatio === '9:16') return '1024x1792';
+  if (aspectRatio === '16:9') return '1536x1024';
+  if (aspectRatio === '9:16') return '1024x1536';
   return '1024x1024';
 }
 
