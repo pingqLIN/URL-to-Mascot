@@ -20,6 +20,34 @@ export function isOpenAiAspectRatioFallback(aspectRatio: string) {
   return aspectRatio === '4:3' || aspectRatio === '3:4';
 }
 
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onloadend = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+        return;
+      }
+
+      reject(new Error('Unable to read image payload.'));
+    };
+
+    reader.onerror = () => reject(reader.error ?? new Error('Unable to read image payload.'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function fetchImageUrlAsDataUrl(url: string, t: TFunction) {
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(t('errorImageGenerate'));
+  }
+
+  return blobToDataUrl(await response.blob());
+}
+
 export async function generateImage({
   apiKey,
   aspectRatio,
@@ -80,7 +108,7 @@ export async function generateImage({
   }
 
   if (imagePayload?.url) {
-    return imagePayload.url;
+    return fetchImageUrlAsDataUrl(imagePayload.url, t);
   }
 
   if (!imagePayload) {
