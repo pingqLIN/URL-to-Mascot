@@ -70,8 +70,8 @@ The final prompt can be copied, regenerated, and used immediately for preview im
 ### Prerequisites
 
 - Node.js
-- A Gemini API key for text generation
-- An optional OpenAI API key for DALL-E preview images
+- A Gemini API key, OpenAI API key, or Anthropic API key for text generation
+- An optional OpenAI API key for OpenAI image preview generation
 
 ### Install
 
@@ -81,10 +81,12 @@ npm install
 
 ### Configure
 
-Create a `.env.local` file and set your Gemini key:
+Create a `.env.local` file and set the provider keys you want to use:
 
 ```bash
 GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
+OPENAI_API_KEY="YOUR_OPENAI_API_KEY"
+ANTHROPIC_API_KEY="YOUR_ANTHROPIC_API_KEY"
 ```
 
 ### Run
@@ -106,10 +108,11 @@ Open `http://localhost:3000` after the dev server starts.
 
 | Stage | Providers | Notes |
 |-------|-----------|-------|
-| Text analysis | Google Gemini | Recommended in the current browser-based test flow |
-| Text analysis UI options | OpenAI, Anthropic | Present in the interface, but the current test environment recommends Gemini because of CORS limitations |
+| Text analysis | Google Gemini | Fully supported |
+| Text analysis | OpenAI | Fully supported with a valid OpenAI API key |
+| Text analysis | Anthropic | Fully supported with a valid Anthropic API key |
 | Preview image generation | Gemini image models | Supports Gemini image generation flows directly in the app |
-| Preview image generation | OpenAI DALL-E | Requires a direct OpenAI API key |
+| Preview image generation | OpenAI image models | Requires a direct OpenAI API key |
 
 ## Output Format
 
@@ -145,8 +148,8 @@ npm run lint
 | Frontend | React 19, TypeScript, Vite |
 | Motion | Motion |
 | UI Icons | Lucide React |
-| AI Text | Google Gemini |
-| AI Image | Gemini image models, OpenAI DALL-E |
+| AI Text | Google Gemini, OpenAI, Anthropic |
+| AI Image | Gemini image models, OpenAI image models |
 
 ## Why This Project Is Fun
 

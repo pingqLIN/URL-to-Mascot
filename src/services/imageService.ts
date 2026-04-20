@@ -1,23 +1,55 @@
 import { GoogleGenAI } from '@google/genai';
-import type { TFunction } from '../types';
+import type { ImageProvider, TFunction } from '../types';
 
 type GenerateImageParams = {
   apiKey: string;
   aspectRatio: string;
   model: string;
   prompt: string;
-  provider: 'google' | 'openai';
+  provider: ImageProvider;
   t: TFunction;
 };
 
 export function resolveOpenAiImageSize(aspectRatio: string) {
-  if (aspectRatio === '16:9') return '1792x1024';
-  if (aspectRatio === '9:16') return '1024x1792';
+  if (aspectRatio === '16:9') return '1536x1024';
+  if (aspectRatio === '9:16') return '1024x1536';
   return '1024x1024';
 }
 
 export function isOpenAiAspectRatioFallback(aspectRatio: string) {
   return aspectRatio === '4:3' || aspectRatio === '3:4';
+}
+
+function isLegacyOpenAiImageModel(model: string) {
+  return model.startsWith('dall-e-');
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onloadend = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+        return;
+      }
+
+      reject(new Error('Unable to read image payload.'));
+    };
+
+    reader.onerror = () => reject(reader.error ?? new Error('Unable to read image payload.'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function fetchImageUrlAsDataUrl(url: string, t: TFunction) {
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(t('errorImageGenerate'));
+  }
+
+  return blobToDataUrl(await response.blob());
 }
 
 export async function generateImage({
@@ -52,19 +84,24 @@ export async function generateImage({
     return `data:image/jpeg;base64,${imagePart.inlineData.data}`;
   }
 
+  const requestBody: Record<string, string | number> = {
+    model,
+    prompt,
+    n: 1,
+    size: resolveOpenAiImageSize(aspectRatio),
+  };
+
+  if (isLegacyOpenAiImageModel(model)) {
+    requestBody.response_format = 'b64_json';
+  }
+
   const response = await fetch('https://api.openai.com/v1/images/generations', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({
-      model,
-      prompt,
-      n: 1,
-      response_format: 'b64_json',
-      size: resolveOpenAiImageSize(aspectRatio),
-    }),
+    body: JSON.stringify(requestBody),
   });
 
   if (!response.ok) {
@@ -80,7 +117,7 @@ export async function generateImage({
   }
 
   if (imagePayload?.url) {
-    return imagePayload.url;
+    return fetchImageUrlAsDataUrl(imagePayload.url, t);
   }
 
   if (!imagePayload) {

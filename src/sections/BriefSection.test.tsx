@@ -38,14 +38,14 @@ function renderBriefSection(overrides: Partial<ComponentProps<typeof BriefSectio
 }
 
 describe('BriefSection', () => {
-  it('keeps unsupported live text providers disabled and explains the limitation', async () => {
+  it('shows OpenAI and Anthropic as selectable live text providers', async () => {
     renderBriefSection();
 
     const providerSelect = screen.getByRole('button', { name: t('textAnalysis') });
     fireEvent.click(providerSelect);
 
-    expect(screen.getByRole('option', { name: 'OpenAI' })).toBeDisabled();
-    expect(screen.getByRole('option', { name: 'Anthropic' })).toBeDisabled();
+    expect(screen.getByRole('option', { name: 'OpenAI' })).toBeEnabled();
+    expect(screen.getByRole('option', { name: 'Anthropic' })).toBeEnabled();
     expect(screen.getByText(t('textProviderSupportHint'))).toBeInTheDocument();
   });
 });

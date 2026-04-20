@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { IMAGE_MODELS, MODELS } from '../constants';
-import type { KeySource } from '../types';
+import type { KeySource, ProviderApiKeyMap } from '../types';
 
 type ApiConfigType = 'text' | 'image';
 
@@ -18,12 +18,30 @@ function getModelMap(type: ApiConfigType) {
   return type === 'text' ? MODELS : IMAGE_MODELS;
 }
 
-export function useApiKeyConfig(type: ApiConfigType, hasBuiltInGeminiKey: boolean, hasPaidKey: boolean) {
+function resolveDefaultKeySource(
+  provider: string,
+  builtInApiKeys: ProviderApiKeyMap,
+  isAiStudioEnvironment: boolean,
+) {
+  if (provider === 'google' && !isAiStudioEnvironment) {
+    return 'custom';
+  }
+
+  return builtInApiKeys[provider as keyof ProviderApiKeyMap] ? 'builtin' : 'custom';
+}
+
+export function useApiKeyConfig(
+  type: ApiConfigType,
+  builtInApiKeys: ProviderApiKeyMap,
+  hasPaidKey: boolean,
+  isAiStudioEnvironment: boolean,
+) {
   const [provider, setProvider] = useState(INITIAL_PROVIDER[type]);
   const [model, setModel] = useState(INITIAL_MODEL[type]);
   const [apiKey, setApiKey] = useState('');
-  const [authMethod, setAuthMethod] = useState<'apikey' | 'oauth'>('apikey');
-  const [keySource, setKeySource] = useState<KeySource>(hasBuiltInGeminiKey ? 'builtin' : 'custom');
+  const [keySource, setKeySource] = useState<KeySource>(
+    resolveDefaultKeySource(INITIAL_PROVIDER[type], builtInApiKeys, isAiStudioEnvironment),
+  );
 
   useEffect(() => {
     const models = getModelMap(type);
@@ -32,23 +50,28 @@ export function useApiKeyConfig(type: ApiConfigType, hasBuiltInGeminiKey: boolea
 
   useEffect(() => {
     if (provider !== 'google') {
+      setKeySource(resolveDefaultKeySource(provider, builtInApiKeys, isAiStudioEnvironment));
+      return;
+    }
+
+    if (!isAiStudioEnvironment) {
       setKeySource('custom');
       return;
     }
 
-    if (!hasBuiltInGeminiKey) {
+    if (!builtInApiKeys.google) {
       setKeySource((current) => (current === 'builtin' ? 'custom' : current));
     }
-  }, [hasBuiltInGeminiKey, provider]);
+  }, [builtInApiKeys, isAiStudioEnvironment, provider]);
 
   useEffect(() => {
     if (hasPaidKey) return;
 
     setKeySource((current) => {
       if (current !== 'selected') return current;
-      return hasBuiltInGeminiKey ? 'builtin' : 'custom';
+      return builtInApiKeys.google && isAiStudioEnvironment ? 'builtin' : 'custom';
     });
-  }, [hasBuiltInGeminiKey, hasPaidKey]);
+  }, [builtInApiKeys.google, hasPaidKey, isAiStudioEnvironment]);
 
   return {
     provider,
@@ -57,8 +80,6 @@ export function useApiKeyConfig(type: ApiConfigType, hasBuiltInGeminiKey: boolea
     setModel,
     apiKey,
     setApiKey,
-    authMethod,
-    setAuthMethod,
     keySource,
     setKeySource,
   };

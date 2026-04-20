@@ -29,10 +29,12 @@ function ConceptHarness({
   initialResult = baseResult,
   copySpy = vi.fn(),
   regeneratePromptSpy = vi.fn().mockResolvedValue(undefined),
+  regenerateSectionSpy = vi.fn().mockResolvedValue(undefined),
 }: {
   initialResult?: ConceptResult | null;
   copySpy?: ReturnType<typeof vi.fn>;
   regeneratePromptSpy?: ReturnType<typeof vi.fn>;
+  regenerateSectionSpy?: ReturnType<typeof vi.fn>;
 }) {
   const [result, setResult] = useState<ConceptResult | null>(initialResult);
   const [mascotType, setMascotType] = useState<MascotType>('auto');
@@ -59,6 +61,7 @@ function ConceptHarness({
       onManualPromptChange={vi.fn()}
       onCopy={copySpy}
       onRegeneratePrompt={regeneratePromptSpy}
+      onRegenerateSection={regenerateSectionSpy}
       renderWorkflowStepper={() => <div>Stepper</div>}
       t={t}
     />

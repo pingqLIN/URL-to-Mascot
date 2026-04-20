@@ -8,6 +8,7 @@ function getAiStudio(): AiStudioBridge | undefined {
 export function useKeyDetection(hasBuiltInKey: boolean) {
   const [demoMode, setDemoMode] = useState(false);
   const [hasPaidKey, setHasPaidKey] = useState(false);
+  const [isAiStudioEnvironment, setIsAiStudioEnvironment] = useState(false);
   const [hasCheckedPaidKey, setHasCheckedPaidKey] = useState(false);
   const [hasInitializedDemoMode, setHasInitializedDemoMode] = useState(false);
 
@@ -19,6 +20,7 @@ export function useKeyDetection(hasBuiltInKey: boolean) {
       const nextHasPaidKey = aistudio ? await aistudio.hasSelectedApiKey() : false;
 
       if (!active) return;
+      setIsAiStudioEnvironment(Boolean(aistudio));
       setHasPaidKey(nextHasPaidKey);
       setHasCheckedPaidKey(true);
     };
@@ -49,6 +51,7 @@ export function useKeyDetection(hasBuiltInKey: boolean) {
     demoMode,
     setDemoMode,
     hasPaidKey,
+    isAiStudioEnvironment,
     handleSelectKey,
   };
 }

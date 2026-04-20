@@ -65,7 +65,7 @@ describe('PreviewSection', () => {
   it('explains when OpenAI will fall back to square output for unsupported ratios', () => {
     renderPreviewSection({
       imageProvider: 'openai',
-      imageModel: 'dall-e-3',
+      imageModel: 'gpt-image-1.5',
       aspectRatio: '4:3',
       promptText: 'Prompt is ready',
     });
