@@ -26,7 +26,6 @@ export function useApiKeyConfig(type: ApiConfigType, builtInApiKeys: ProviderApi
   const [provider, setProvider] = useState(INITIAL_PROVIDER[type]);
   const [model, setModel] = useState(INITIAL_MODEL[type]);
   const [apiKey, setApiKey] = useState('');
-  const [authMethod, setAuthMethod] = useState<'apikey' | 'oauth'>('apikey');
   const [keySource, setKeySource] = useState<KeySource>(resolveDefaultKeySource(INITIAL_PROVIDER[type], builtInApiKeys));
 
   useEffect(() => {
@@ -61,8 +60,6 @@ export function useApiKeyConfig(type: ApiConfigType, builtInApiKeys: ProviderApi
     setModel,
     apiKey,
     setApiKey,
-    authMethod,
-    setAuthMethod,
     keySource,
     setKeySource,
   };

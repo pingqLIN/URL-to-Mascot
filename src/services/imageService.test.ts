@@ -44,6 +44,44 @@ describe('generateImage', () => {
     ).resolves.toBe('data:image/png;base64,abc123');
 
     expect(fetchMock).toHaveBeenCalledOnce();
+    const [, requestInit] = fetchMock.mock.calls[0];
+    expect(JSON.parse(String(requestInit.body))).toEqual({
+      model: 'gpt-image-1.5',
+      n: 1,
+      prompt: 'Render a mascot.',
+      size: '1024x1024',
+    });
+  });
+
+  it('keeps response_format only for legacy DALL-E image requests', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [{ b64_json: 'abc123' }],
+      }),
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      generateImage({
+        apiKey: 'openai-key',
+        aspectRatio: '1:1',
+        model: 'dall-e-3',
+        prompt: 'Render a mascot.',
+        provider: 'openai',
+        t,
+      }),
+    ).resolves.toBe('data:image/png;base64,abc123');
+
+    const [, requestInit] = fetchMock.mock.calls[0];
+    expect(JSON.parse(String(requestInit.body))).toEqual({
+      model: 'dall-e-3',
+      n: 1,
+      prompt: 'Render a mascot.',
+      response_format: 'b64_json',
+      size: '1024x1024',
+    });
   });
 
   it('converts OpenAI image URLs into stable data URLs before returning them', async () => {

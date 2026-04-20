@@ -20,6 +20,10 @@ export function isOpenAiAspectRatioFallback(aspectRatio: string) {
   return aspectRatio === '4:3' || aspectRatio === '3:4';
 }
 
+function isLegacyOpenAiImageModel(model: string) {
+  return model.startsWith('dall-e-');
+}
+
 function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -80,19 +84,24 @@ export async function generateImage({
     return `data:image/jpeg;base64,${imagePart.inlineData.data}`;
   }
 
+  const requestBody: Record<string, string | number> = {
+    model,
+    prompt,
+    n: 1,
+    size: resolveOpenAiImageSize(aspectRatio),
+  };
+
+  if (isLegacyOpenAiImageModel(model)) {
+    requestBody.response_format = 'b64_json';
+  }
+
   const response = await fetch('https://api.openai.com/v1/images/generations', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({
-      model,
-      prompt,
-      n: 1,
-      response_format: 'b64_json',
-      size: resolveOpenAiImageSize(aspectRatio),
-    }),
+    body: JSON.stringify(requestBody),
   });
 
   if (!response.ok) {

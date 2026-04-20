@@ -426,9 +426,6 @@ export default function App() {
                             demoMode={demoMode}
                             renderKeyConfig={() => (
                               <KeyConfigPanel
-                                isText
-                                authMethod={textConfig.authMethod}
-                                setAuthMethod={textConfig.setAuthMethod}
                                 provider={textConfig.provider}
                                 keySource={textConfig.keySource}
                                 setKeySource={textConfig.setKeySource}
@@ -496,9 +493,6 @@ export default function App() {
                             demoMode={demoMode}
                             renderKeyConfig={() => (
                               <KeyConfigPanel
-                                isText={false}
-                                authMethod={imageConfig.authMethod}
-                                setAuthMethod={imageConfig.setAuthMethod}
                                 provider={imageConfig.provider}
                                 keySource={imageConfig.keySource}
                                 setKeySource={imageConfig.setKeySource}
