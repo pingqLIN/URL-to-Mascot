@@ -21,6 +21,7 @@ Guess what your website mascot would be, then move through a clean four-step flo
 </p>
 
 <p align="center">
+  <a href="https://aistudio.google.com/apps/c2ff7197-fe31-4aa0-bdf0-e75fb3bcf085?fullscreenApplet=true"><strong>Live Demo</strong></a> •
   <a href="#quick-start">Quick Start</a> •
   <a href="#what-it-does">What It Does</a> •
   <a href="#workflow">Workflow</a> •
@@ -38,7 +39,7 @@ It reads the meaning behind a domain, guesses the character hiding inside it, an
 - Generate a four-step editing flow that is easy to follow, review, and reuse.
 - Produce preview images with Gemini image models or OpenAI image generation.
 
-View the AI Studio app: [https://ai.studio/apps/c2ff7197-fe31-4aa0-bdf0-e75fb3bcf085](https://ai.studio/apps/c2ff7197-fe31-4aa0-bdf0-e75fb3bcf085?fullscreenApplet=true)
+Try the [Live Demo in Google AI Studio](https://aistudio.google.com/apps/c2ff7197-fe31-4aa0-bdf0-e75fb3bcf085?fullscreenApplet=true): enter a URL and follow the four-step mascot creation workflow.
 
 ## What It Does
 
