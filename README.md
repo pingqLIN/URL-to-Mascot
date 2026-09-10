@@ -38,7 +38,7 @@ It reads the meaning behind a domain, guesses the character hiding inside it, an
 - Generate a four-step editing flow that is easy to follow, review, and reuse.
 - Produce preview images with Gemini image models or OpenAI image generation.
 
-View the AI Studio app: https://ai.studio/apps/c2ff7197-fe31-4aa0-bdf0-e75fb3bcf085
+View the AI Studio app: [https://ai.studio/apps/c2ff7197-fe31-4aa0-bdf0-e75fb3bcf085](https://ai.studio/apps/c2ff7197-fe31-4aa0-bdf0-e75fb3bcf085?fullscreenApplet=true)
 
 ## What It Does
 
